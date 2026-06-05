@@ -1,0 +1,10 @@
+{
+  "name": "@cobdfamily/cobdkit-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mini-app bridge runtime for the cobdfamily super-app shell.",
+  "license": "AGPL-3.0",
+  "workspaces": [
+    "packages/*"
+  ]
+}
