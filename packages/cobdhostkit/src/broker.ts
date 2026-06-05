@@ -2,6 +2,7 @@ import type {
   CallMessage,
   ErrorMessage,
   EventMessage,
+  LocalBroker,
   ResultMessage,
 } from "@cobdfamily/cobdcorekit";
 import type { CapabilityContext, CapabilityHandler, HostBrokerOptions } from "./types.js";
@@ -9,17 +10,22 @@ import type { CapabilityContext, CapabilityHandler, HostBrokerOptions } from "./
 export interface HostBroker {
   /** Register (or replace) a capability handler. */
   register(capability: string, handler: CapabilityHandler): void;
-  /** Detach the message listener. */
+  /** Detach the window message listener (the iframe-facing side). */
   stop(): void;
+  /**
+   * In-process entry point for a shell-side `cobdcorekit` — pass this as the
+   * `broker` option to `installCobdkit`/`createTransport`. The shell's own code
+   * then uses the same cobdcorekit API as a mini-app, with no iframe hop.
+   */
+  readonly local: LocalBroker;
 }
 
 /**
- * The host side of the cobdkit bridge. Lives in the super-app shell, listens for
- * `__cobdkit` calls posted by mini-app iframes, dispatches them to capability
- * handlers, and posts the `result`/`error` back to the calling frame.
- *
- * This is the single place where origin policy is enforced and native plugins
- * are actually invoked.
+ * The host side of the cobdkit bridge. Lives in the super-app shell and is the
+ * single place where origin policy is enforced and native plugins are invoked.
+ * It serves two callers off one set of capability handlers:
+ *   - mini-app iframes, via a `window` `message` listener (postMessage)
+ *   - the shell's own code, via `.local` (in-process)
  */
 export function createHostBroker(opts: HostBrokerOptions = {}): HostBroker {
   const allowed = opts.allowedOrigins;
@@ -33,6 +39,19 @@ export function createHostBroker(opts: HostBrokerOptions = {}): HostBroker {
     return allowed.includes(origin);
   }
 
+  /** Run a capability handler. Throws on unknown capability. Transport-agnostic. */
+  function run(
+    capability: string,
+    method: string,
+    options: unknown,
+    ctx: CapabilityContext,
+  ): Promise<unknown> | unknown {
+    const handler = handlers.get(capability);
+    if (!handler) throw new Error(`Unknown capability: ${capability}`);
+    return handler(method, options, ctx);
+  }
+
+  // --- iframe-facing transport: window message listener ---
   const listener = async (e: MessageEvent): Promise<void> => {
     const msg = e.data as CallMessage | undefined;
     if (!msg || msg.__cobdkit !== true || msg.kind !== "call") return;
@@ -46,12 +65,6 @@ export function createHostBroker(opts: HostBrokerOptions = {}): HostBroker {
 
     if (!originAllowed(e.origin)) {
       reply({ __cobdkit: true, kind: "error", id: msg.id, error: { code: 1, message: "Origin not allowed" } });
-      return;
-    }
-
-    const handler = handlers.get(msg.capability);
-    if (!handler) {
-      reply({ __cobdkit: true, kind: "error", id: msg.id, error: { message: `Unknown capability: ${msg.capability}` } });
       return;
     }
 
@@ -70,7 +83,7 @@ export function createHostBroker(opts: HostBrokerOptions = {}): HostBroker {
     };
 
     try {
-      const value = await handler(msg.method, msg.options, ctx);
+      const value = await run(msg.capability, msg.method, msg.options, ctx);
       reply({ __cobdkit: true, kind: "result", id: msg.id, value });
     } catch (err) {
       reply({
@@ -82,14 +95,24 @@ export function createHostBroker(opts: HostBrokerOptions = {}): HostBroker {
     }
   };
 
-  window.addEventListener("message", listener);
+  const hasWindow = typeof window !== "undefined";
+  if (hasWindow) window.addEventListener("message", listener);
+
+  // --- shell-facing transport: in-process ---
+  const local: LocalBroker = {
+    async invoke(capability, method, options, emit) {
+      const ctx: CapabilityContext = { origin: "local", emit };
+      return run(capability, method, options, ctx);
+    },
+  };
 
   return {
     register(capability, handler) {
       handlers.set(capability, handler);
     },
     stop() {
-      window.removeEventListener("message", listener);
+      if (hasWindow) window.removeEventListener("message", listener);
     },
+    local,
   };
 }

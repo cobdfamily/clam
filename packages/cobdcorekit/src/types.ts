@@ -1,14 +1,39 @@
 /** Shared protocol + public types for the cobdkit mini-app runtime. */
 
+/**
+ * The in-process broker interface that cobdcorekit talks to when it runs in the
+ * shell itself (no iframe). `@cobdfamily/cobdhostkit`'s broker satisfies this;
+ * cobdcorekit depends only on the shape, never on the host package.
+ */
+export interface LocalBroker {
+  /**
+   * Invoke a capability method in-process. `emit` lets the handler push events
+   * (watch ticks, torch-state changes, ...) back to this caller for the same
+   * capability. Resolves with the result, rejects with the error.
+   */
+  invoke(
+    capability: string,
+    method: string,
+    options: unknown,
+    emit: (event: string, payload: unknown) => void,
+  ): Promise<unknown>;
+}
+
 export interface TransportOptions {
   /**
    * Origin of the host shell. Inbound messages from any other origin are
    * ignored, and outbound messages are targeted at this origin. Defaults to
-   * `"*"` (no origin check) — set it in production.
+   * `"*"` (no origin check) — set it in production. (iframe transport only)
    */
   hostOrigin?: string;
-  /** Window to post to. Defaults to `window.parent`. */
+  /** Window to post to. Defaults to `window.parent`. (iframe transport only) */
   target?: Window;
+  /**
+   * When provided, cobdcorekit talks to this in-process broker directly instead
+   * of postMessaging a parent shell. Use this when the *shell's own* code calls
+   * the cobdcorekit API — same API, no iframe round-trip.
+   */
+  broker?: LocalBroker;
 }
 
 export interface Transport {

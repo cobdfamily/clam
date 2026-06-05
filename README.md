@@ -37,6 +37,32 @@ that `cobdcorekit` talks to on your behalf.
 | `navigator.geolocation` | **shim** of the W3C API | a standard browser API — unmodified apps just work |
 | `cobdkit.torch` | **new** API (no web standard) | `on()` / `off()` / `toggle()` / `isOn` |
 
+## Two contexts, one API
+
+`cobdcorekit` picks its transport from the options you give it, so the same API
+works either side of the iframe boundary:
+
+```ts
+// in a mini-app iframe — postMessage to the parent shell
+import { installCobdkit } from "@cobdfamily/cobdcorekit";
+installCobdkit({ hostOrigin: "https://shell.bowencommunity.ca" });
+```
+
+```ts
+// in the shell itself — talk to the local broker in-process, no iframe hop
+import { createHostBroker, createTorchCapability } from "@cobdfamily/cobdhostkit";
+import { installCobdkit } from "@cobdfamily/cobdcorekit";
+
+const broker = createHostBroker({
+  capabilities: { torch: createTorchCapability() },
+}); // also serves mini-app iframes via its window listener
+
+installCobdkit({ broker: broker.local }); // shell code now uses cobdkit.torch too
+```
+
+Either way the caller writes `cobdkit.torch.on()` / `navigator.geolocation.*`
+and never touches `cobdhostkit`.
+
 ## Develop
 
 ```sh
@@ -44,10 +70,3 @@ npm install
 npm run build      # builds cobdcorekit, then cobdhostkit (shares its types)
 npm test
 ```
-
-## Status
-
-`cobdcorekit`'s transport currently implements the **in-iframe** path
-(postMessage to the parent shell). The **in-shell** path — where shell code uses
-the same `cobdcorekit` API to reach the local `cobdhostkit` broker without a
-round-trip through an iframe — is not built yet.
