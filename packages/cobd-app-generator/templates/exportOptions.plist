@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  iOS export options for a GENERATED project. Signing is supplied here at build
+  time (manual signing) so it survives regeneration — nothing signing-related
+  lives in the disposable Xcode project. Fill in TEAM_ID and the per-app profile
+  name (managed by fastlane match), or substitute via CI.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key>
+  <string>app-store</string>
+  <key>teamID</key>
+  <string>__TEAM_ID__</string>
+  <key>signingStyle</key>
+  <string>manual</string>
+  <key>provisioningProfiles</key>
+  <dict>
+    <key>__APP_ID__</key>
+    <string>__PROVISIONING_PROFILE_NAME__</string>
+  </dict>
+</dict>
+</plist>

@@ -1,0 +1,19 @@
+# fastlane match — stores certs/profiles encrypted in a private repo/bucket and
+# installs them into the runner keychain at build time. Nothing signing-related
+# is committed in the (disposable) ios/ project.
+#
+# One distribution certificate is shared across all three apps (same team);
+# match creates/rotates one provisioning profile per app id.
+
+git_url(ENV["MATCH_GIT_URL"])           # private repo holding encrypted signing material
+storage_mode("git")
+type("appstore")
+
+app_identifier([
+  "ca.cobd.app.alpha",
+  "ca.cobd.app.bravo",
+  "ca.cobd.app.charlie",
+])
+
+team_id(ENV["APPLE_TEAM_ID"])
+# MATCH_PASSWORD is provided via CI secret.

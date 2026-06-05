@@ -1,0 +1,13 @@
+{
+  "$comment": "Single source of truth for the generator. Bump capacitorVersion here to upgrade ALL apps on their next regeneration — there are no committed native projects to migrate.",
+  "capacitorVersion": "8.4.0",
+  "platforms": ["android", "ios"],
+  "base": {
+    "package": "@cobdfamily/cobdappkit",
+    "buildCommand": "npm run build -w @cobdfamily/cobdappkit",
+    "distDir": "../cobdappkit/dist"
+  },
+  "appsDir": "apps",
+  "sharedOverlay": "shared/overlay.json",
+  "outDir": ".generated"
+}
