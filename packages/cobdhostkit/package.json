@@ -1,7 +1,7 @@
 {
-  "name": "@cobdfamily/cbhostkit",
+  "name": "@cobdfamily/cobdhostkit",
   "version": "0.0.0",
-  "description": "Host-side broker for the cobdkit mini-app bridge: runs in the super-app shell, answers cobdkit calls with native Capacitor plugins.",
+  "description": "Native broker for the cobdkit bridge: runs in the super-app shell and answers cobdcorekit calls with native Capacitor plugins. The only package that touches native; never called directly.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,7 +21,7 @@
   "dependencies": {
     "@capacitor/haptics": "^7.0.1",
     "@capgo/capacitor-flash": "^7.0.4",
-    "@cobdfamily/cobdkit": "*"
+    "@cobdfamily/cobdcorekit": "*"
   },
   "peerDependencies": {
     "@capacitor/core": "^7.0.0"

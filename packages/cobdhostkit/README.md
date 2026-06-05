@@ -1,13 +1,14 @@
-# @cobdfamily/cbhostkit
+# @cobdfamily/cobdhostkit
 
-The **host side** of the cobdkit mini-app bridge. Where
-[`@cobdfamily/cobdkit`](../cobdkit) is injected into each mini-app iframe,
-`cbhostkit` runs in the **super-app shell** (e.g. `bowencommunity-core`). It
-listens for the `__cobdkit` calls the mini-apps post, enforces origin policy,
-and answers them with native Capacitor plugins.
+The **native broker** of the cobdkit bridge — the only package that actually
+touches Capacitor plugins, and one you **never call directly** (callers always
+go through [`@cobdfamily/cobdcorekit`](../cobdcorekit)). It runs in the
+**super-app shell** (e.g. `bowencommunity-core`), listens for the `__cobdkit`
+calls that `cobdcorekit` posts, enforces origin policy, and answers them with
+native plugins.
 
 ```
-mini-app iframe                       shell (this package)
+cobdcorekit caller                    shell (this package)
   cobdkit.torch.on() ── postMessage ──▶ createHostBroker()
                                           └─ torch capability
                                                ├─ @capgo/capacitor-flash
@@ -17,7 +18,7 @@ mini-app iframe                       shell (this package)
 ## Usage
 
 ```ts
-import { createHostBroker, createTorchCapability } from "@cobdfamily/cbhostkit";
+import { createHostBroker, createTorchCapability } from "@cobdfamily/cobdhostkit";
 
 const broker = createHostBroker({
   allowedOrigins: ["https://ferry.bowencommunity.ca"], // omit for dev (allow all)

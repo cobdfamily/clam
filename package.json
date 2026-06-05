@@ -1,11 +1,11 @@
 {
-  "name": "@cobdfamily/cobdkit-monorepo",
+  "name": "@cobdfamily/oister",
   "version": "0.0.0",
   "private": true,
-  "description": "Mini-app bridge runtime for the cobdfamily super-app shell.",
+  "description": "Native-bridge toolkit for the cobdfamily super-app shell (cobdcorekit + cobdhostkit).",
   "license": "AGPL-3.0",
   "scripts": {
-    "build": "npm run build -w @cobdfamily/cobdkit && npm run build -w @cobdfamily/cbhostkit",
+    "build": "npm run build -w @cobdfamily/cobdcorekit && npm run build -w @cobdfamily/cobdhostkit",
     "test": "npm test --workspaces --if-present"
   },
   "workspaces": [

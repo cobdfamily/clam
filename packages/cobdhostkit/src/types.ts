@@ -1,5 +1,5 @@
-/** Host-side types for the cobdkit broker. The wire protocol itself is shared
- *  from `@cobdfamily/cobdkit`. */
+/** Host-side types for the cobdhostkit broker. The wire protocol itself is
+ *  shared from `@cobdfamily/cobdcorekit`. */
 
 /** Handed to every capability handler so it can push unsolicited events back to
  *  the mini-app that made the call (watch ticks, torch-state changes, ...). */

@@ -3,7 +3,7 @@ import type {
   ErrorMessage,
   EventMessage,
   ResultMessage,
-} from "@cobdfamily/cobdkit";
+} from "@cobdfamily/cobdcorekit";
 import type { CapabilityContext, CapabilityHandler, HostBrokerOptions } from "./types.js";
 
 export interface HostBroker {
