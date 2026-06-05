@@ -20,15 +20,17 @@
     "test": "node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
-    "@capacitor/haptics": "^7.0.1",
-    "@capgo/capacitor-flash": "^7.0.4",
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capgo/capacitor-flash": "^8.0.28",
     "@cobdfamily/cobdcorekit": "*"
   },
   "peerDependencies": {
-    "@capacitor/core": "^7.0.0"
+    "@capacitor/core": "^8.0.0"
   },
   "devDependencies": {
-    "@capacitor/core": "^7.0.0",
+    "@capacitor/core": "^8.0.0",
     "tsx": "^4.20.5",
     "typescript": "^5.6.3"
   }

@@ -95,9 +95,29 @@ export interface TorchAPI {
   readonly isOn: boolean;
 }
 
+export interface NavAPI {
+  /** Point the shell's main view at a URL. */
+  go(url: string): Promise<void>;
+  /** Reveal the launcher menu. */
+  menu(): Promise<void>;
+}
+
+export interface BrowserAPI {
+  /** Open a URL in an in-app browser. */
+  open(url: string): Promise<void>;
+}
+
+export interface PdfAPI {
+  /** Open a PDF (URL or path) in a native viewer. */
+  open(file: string): Promise<void>;
+}
+
 export interface COBDCoreKit {
   readonly version: string;
   readonly torch: TorchAPI;
+  readonly nav: NavAPI;
+  readonly browser: BrowserAPI;
+  readonly pdf: PdfAPI;
 }
 
 declare global {

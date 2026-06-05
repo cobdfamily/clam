@@ -34,8 +34,11 @@ that `cobdcorekit` talks to on your behalf.
 
 | Surface | Kind | Caller sees |
 | --- | --- | --- |
-| `navigator.geolocation` | **shim** of the W3C API | a standard browser API — unmodified apps just work |
+| `navigator.geolocation` | **shim** of the W3C API | a standard browser API — unmodified apps just work (brokered via the host `geo` capability) |
 | `COBDCoreKit.torch` | **new** API (no web standard) | `on()` / `off()` / `toggle()` / `flash()` / `isOn` |
+| `COBDCoreKit.nav` | **new** API | `go(url)` / `menu()` — shell navigation |
+| `COBDCoreKit.browser` | **new** API | `open(url)` — in-app browser |
+| `COBDCoreKit.pdf` | **new** API | `open(file)` — native PDF viewer |
 
 ## Two contexts, one API
 
