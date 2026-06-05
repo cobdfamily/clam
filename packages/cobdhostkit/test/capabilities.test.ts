@@ -12,16 +12,14 @@ const ctx = (events: Array<[string, unknown]> = []): CapabilityContext => ({
   emit: (e, p) => events.push([e, p]),
 });
 
-test("nav.go / nav.menu drive the injected target", async () => {
+test("nav.go drives the injected target into the single app iframe", async () => {
   const seen: string[] = [];
-  const nav = createNavCapability({
-    target: { go: (url) => { seen.push(`go:${url}`); }, menu: () => { seen.push("menu"); } },
-  });
+  const nav = createNavCapability({ target: { go: (url) => { seen.push(`go:${url}`); } } });
   await nav("go", { url: "/welcome" }, ctx());
-  await nav("menu", {}, ctx());
-  assert.deepEqual(seen, ["go:/welcome", "menu"]);
+  assert.deepEqual(seen, ["go:/welcome"]);
   await assert.rejects(() => Promise.resolve(nav("go", {}, ctx())), /url required/);
-  await assert.rejects(() => Promise.resolve(nav("zap", {}, ctx())), /unknown method/);
+  // menu is rendered by the shell now, not brokered
+  await assert.rejects(() => Promise.resolve(nav("menu", {}, ctx())), /unknown method/);
 });
 
 test("geo.getCurrentPosition flattens the native position", async () => {

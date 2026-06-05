@@ -1,51 +1,39 @@
 import type { CapabilityHandler } from "../types.js";
 
-/** How the shell actually navigates. Injectable; the default drives iframes. */
+/** How the shell navigates its single app iframe. Injectable; default drives the DOM. */
 export interface NavTarget {
   go(url: string): void | Promise<void>;
-  menu(): void | Promise<void>;
 }
 
 export interface NavOptions {
-  /** Override the default DOM behavior entirely. */
+  /** Override the default DOM behavior. */
   target?: NavTarget;
-  /** Main-view iframe selector (default "#mainview"). */
-  mainViewSelector?: string;
-  /** Menu iframe selector (default "#menu"). */
-  menuSelector?: string;
+  /** Selector of the single app iframe (default "#app"). */
+  appSelector?: string;
 }
 
-function domNavTarget(mainSel: string, menuSel: string): NavTarget {
-  const isMobile = () => typeof window !== "undefined" && window.innerWidth < 801;
+function domNavTarget(appSel: string): NavTarget {
   return {
     go(url) {
-      const main = document.querySelector<HTMLIFrameElement>(mainSel);
-      if (main && main.getAttribute("src") !== url) main.setAttribute("src", url);
-      if (isMobile()) {
-        const menu = document.querySelector<HTMLElement>(menuSel);
-        if (menu) menu.style.display = "none";
-      }
-      main?.focus();
-    },
-    menu() {
-      const menu = document.querySelector<HTMLElement>(menuSel);
-      if (menu) menu.style.display = "";
+      const frame = document.querySelector<HTMLIFrameElement>(appSel);
+      if (frame && frame.getAttribute("src") !== url) frame.setAttribute("src", url);
+      frame?.focus();
     },
   };
 }
 
 /**
- * `nav` capability — ported from bowencommunity-core's `CBNavigateTo`. `go(url)`
- * points the main view at a URL; `menu()` reveals the launcher menu. This is
- * pure shell UI (no native plugin): the default operates on `#mainview` /
- * `#menu` iframes and can be replaced with a custom `NavTarget`.
+ * `nav` capability — ported from bowencommunity-core's `CBNavigateTo`, adapted
+ * to the single-iframe shell: `go(url)` points the one app iframe at a URL.
  *
- * Unlike core it does NOT set `allow="geolocation"` on the iframe — geolocation
- * is now brokered through the `geo` capability.
+ * The launcher menu is now rendered by the shell directly (not an iframe), so
+ * there is no `menu` method here. Pure shell UI (no native plugin): the default
+ * operates on the `#app` iframe and can be replaced with a custom `NavTarget`.
+ * Unlike core it does NOT set `allow="geolocation"` — geolocation is brokered
+ * through the `geo` capability.
  */
 export function createNavCapability(opts: NavOptions = {}): CapabilityHandler {
-  const target =
-    opts.target ?? domNavTarget(opts.mainViewSelector ?? "#mainview", opts.menuSelector ?? "#menu");
+  const target = opts.target ?? domNavTarget(opts.appSelector ?? "#app");
 
   return async (method, options) => {
     switch (method) {
@@ -55,9 +43,6 @@ export function createNavCapability(opts: NavOptions = {}): CapabilityHandler {
         await target.go(url);
         return;
       }
-      case "menu":
-        await target.menu();
-        return;
       default:
         throw new Error(`nav: unknown method "${method}"`);
     }

@@ -18,13 +18,11 @@ test("nav / browser / pdf installers call the right capability/method/options", 
   const t = createDirectTransport(broker);
 
   await installNav(t).go("/welcome");
-  await installNav(t).menu();
   await installBrowser(t).open("https://cobd.ca");
   await installPdf(t).open("/docs/a.pdf");
 
   assert.deepEqual(calls, [
     ["nav", "go", { url: "/welcome" }],
-    ["nav", "menu", undefined],
     ["browser", "open", { url: "https://cobd.ca" }],
     ["pdf", "open", { file: "/docs/a.pdf" }],
   ]);

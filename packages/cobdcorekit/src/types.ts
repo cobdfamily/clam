@@ -96,10 +96,8 @@ export interface TorchAPI {
 }
 
 export interface NavAPI {
-  /** Point the shell's main view at a URL. */
+  /** Point the shell's single app iframe at a URL. */
   go(url: string): Promise<void>;
-  /** Reveal the launcher menu. */
-  menu(): Promise<void>;
 }
 
 export interface BrowserAPI {
