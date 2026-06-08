@@ -1,3 +1,18 @@
+{{!--
+  oister umbrella-shell template (Handlebars).
+
+  Rendered by @cobdfamily/oister's renderOisterShell(config) into a
+  finished index.html that cobd-app-generator drops into a generated
+  app's webDir. The data shape is OisterConfig (see src/types.ts); an
+  example payload lives in oister.example.json.
+
+  Escaping notes:
+    {{ x }}    HTML-escaped -- text + URL attribute values.
+    {{{ x }}}  raw          -- the CDN integrity/crossorigin attribute
+                              strings and the no-JS nav fallback HTML.
+    {{json x}} JSON-encoded  -- values inside the JSON-LD <script>,
+                              where HTML escaping would corrupt the JSON.
+--}}
 <!DOCTYPE html>
 <html lang="{{site.lang}}">
 <head>
@@ -9,10 +24,10 @@
   <!-- Mobile browser chrome tint (one default, one for dark
        mode via media-query swap). -->
   <meta name="theme-color"
-        content="{{site.theme_color}}"
+        content="{{site.themeColor}}"
         media="(prefers-color-scheme: light)" />
   <meta name="theme-color"
-        content="{{site.theme_color.dark}}"
+        content="{{site.themeColorDark}}"
         media="(prefers-color-scheme: dark)" />
 
   <!-- Open a TCP/TLS handshake to the CDN early so the
@@ -21,17 +36,17 @@
         crossorigin />
   <link rel="dns-prefetch" href="https://cdn.blindhub.ca" />
   <link rel="preload" as="style"
-        href="{{cdn.tokens_css}}" {{cdn.tokens_css.integrity_attr}} />
+        href="{{cdn.tokensCss.url}}" {{{cdn.tokensCss.integrityAttr}}} />
   <link rel="modulepreload"
-        href="{{cdn.ionic_esm}}" {{cdn.ionic_esm.integrity_attr}} />
+        href="{{cdn.ionicEsm.url}}" {{{cdn.ionicEsm.integrityAttr}}} />
 
-  <title>{{page.title.head}}</title>
+  <title>{{page.titleHead}}</title>
   <link rel="canonical" href="{{page.url}}" />
   <meta name="description" content="{{page.description}}" />
 
   <!-- Open Graph -->
-  <meta property="og:type"        content="{{page.og_type}}" />
-  <meta property="og:title"       content="{{page.title.head}}" />
+  <meta property="og:type"        content="{{page.ogType}}" />
+  <meta property="og:title"       content="{{page.titleHead}}" />
   <meta property="og:description" content="{{page.description}}" />
   <meta property="og:url"         content="{{page.url}}" />
   <meta property="og:site_name"   content="{{site.title}}" />
@@ -40,28 +55,29 @@
 
   <!-- Twitter -->
   <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:site"        content="{{social.twitter_handle}}" />
-  <meta name="twitter:title"       content="{{page.title.head}}" />
+  <meta name="twitter:site"        content="{{social.twitterHandle}}" />
+  <meta name="twitter:title"       content="{{page.titleHead}}" />
   <meta name="twitter:description" content="{{page.description}}" />
   <meta name="twitter:image"       content="{{page.image}}" />
 
-  <!-- Organisation (JSON-LD) -->
+  <!-- Organisation (JSON-LD). json helper keeps the values
+       valid JSON -- HTML escaping would mangle quotes here. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type":    "Organization",
-    "name":     "{{site.author}}",
-    "url":      "{{org.url}}",
-    "logo":     "{{org.logo_url}}"
+    "name":     {{json site.author}},
+    "url":      {{json org.url}},
+    "logo":     {{json org.logoUrl}}
   }
   </script>
 
-  <link rel="stylesheet" {{cdn.ionic_css.integrity_attr}} href="{{cdn.ionic_css}}" />
-  <link rel="stylesheet" {{cdn.tokens_css.integrity_attr}} href="{{cdn.tokens_css}}" />
-  <link rel="stylesheet" media="print" {{cdn.print_css.integrity_attr}} href="{{cdn.print_css}}" />
+  <link rel="stylesheet" {{{cdn.ionicCss.integrityAttr}}} href="{{cdn.ionicCss.url}}" />
+  <link rel="stylesheet" {{{cdn.tokensCss.integrityAttr}}} href="{{cdn.tokensCss.url}}" />
+  <link rel="stylesheet" media="print" {{{cdn.printCss.integrityAttr}}} href="{{cdn.printCss.url}}" />
 
-  <script type="module" {{cdn.ionic_esm.integrity_attr}} src="{{cdn.ionic_esm}}"></script>
-  <script type="module" {{cdn.ionicons_esm.integrity_attr}} src="{{cdn.ionicons_esm}}"></script>
+  <script type="module" {{{cdn.ionicEsm.integrityAttr}}} src="{{cdn.ionicEsm.url}}"></script>
+  <script type="module" {{{cdn.ioniconsEsm.integrityAttr}}} src="{{cdn.ioniconsEsm.url}}"></script>
 
   <!-- chrome.css holds the rules that used to be in
        an inline <style> block here (skip-link, the
@@ -70,7 +86,7 @@
        size multiplier). Externalised so the compiled
        output works under strict Content-Security-
        Policy (no 'unsafe-inline'). -->
-  <link rel="stylesheet" {{cdn.chrome_css.integrity_attr}} href="{{cdn.chrome_css}}" />
+  <link rel="stylesheet" {{{cdn.chromeCss.integrityAttr}}} href="{{cdn.chromeCss.url}}" />
   <!-- font-scale-paint.js is a classic (non-module)
        script: blocks parsing for one network round-
        trip, runs synchronously before first paint
@@ -80,7 +96,7 @@
        picked Large or Small. Ships from clf-core
        because the cookie name + CSS var contract
        belong with clf-core's runtime. -->
-  <script {{cdn.font_scale_paint_js.integrity_attr}} src="{{cdn.font_scale_paint_js}}"></script>
+  <script {{{cdn.fontScalePaintJs.integrityAttr}}} src="{{cdn.fontScalePaintJs.url}}"></script>
   <!-- One bundle to register every CLF custom
        element + boot the theming runtime. Module
        script (deferred); runs after the body is
@@ -94,28 +110,29 @@
        everything is on the same cdn.blindhub.ca
        origin -- the entry point's hash is the
        load-bearing verification. -->
-  <script type="module" {{cdn.components_js.integrity_attr}} src="{{cdn.components_js}}"></script>
+  <script type="module" {{{cdn.componentsJs.integrityAttr}}} src="{{cdn.componentsJs.url}}"></script>
 </head>
 <body>
-  <a href="#main" class="skip-link">{{i18n.skip_to_main}}</a>
-  <a href="#cobd-page-search" class="skip-link">{{i18n.skip_to_search}}</a>
+  <a href="#main" class="skip-link">{{i18n.skipToMain}}</a>
+  <a href="#cobd-page-search" class="skip-link">{{i18n.skipToSearch}}</a>
 
   <!-- No-JS fallback. The :not(:defined) rule in <head>
        hides every undefined custom element until Ionic
        upgrades them; when JS never loads, all the ion-*
        below stays invisible. <noscript> renders only when
        JS is OFF, so it doubles as the durable "page is
-       still useful without JS" surface. Both <ul>s are
-       generated at build time from packages/clf/src/navs/
-       *.json so there is one source of truth -- the same
-       data the runtime loader consumes. -->
+       still useful without JS" surface. It lists the same
+       menu items as the live nav below (one source of truth:
+       menu.json). -->
   <noscript>
     <div class="cobd-noscript">
       <p>This page uses JavaScript for the full
         experience. Plain navigation:</p>
-      {{nav.primary_fallback_html}}
-      <h2>More COBD</h2>
-      {{nav.more_cobd_fallback_html}}
+      <ul>
+        {{#each nav.items}}
+        <li><a href="{{this.href}}">{{this.label}}</a></li>
+        {{/each}}
+      </ul>
     </div>
   </noscript>
 
@@ -123,9 +140,9 @@
     <!-- <cobd-app-shell> from @cobdfamily/clf-core owns the
          whole umbrella shell: the <ion-split-pane>, the side
          <ion-menu> (its <cobd-menu-toolbar> header plus the
-         primary / "More COBD" / Accessibility accordions built
-         from <cobd-nav> + the theme/text-size toggles), the
-         main pane (#main, the skip-link target), and the
+         primary nav + Accessibility accordion built from
+         <cobd-nav> + the theme/text-size toggles), the main
+         pane (#main, the skip-link target), and the
          <cobd-app-footer>. What used to be ~80 lines of inline
          split-pane markup is now one element shared with every
          other family shell.
@@ -133,20 +150,22 @@
          The accordion labels, "Menu"/"Done", and the
          Accessibility / Theme / Text size strings are CLF
          chrome strings resolved at runtime from clf-core's
-         ./i18n module, so they aren't passed in. The nav slugs
-         and site title ARE consumer config: the engine resolves
-         them at compile time (Hugo: Site.Params, WP: get_option,
-         etc.) and feeds them through as attributes below.
+         ./i18n module, so they aren't passed in. The site
+         title is consumer config (site-title); the menu is
+         the authored <ul slot="menu"> below, rendered by the
+         shell via <cobd-nav> local mode (single list, no slug
+         lookup) -- one entry per menu.json item.
 
-         The element's only authored child is the app window;
-         it is relocated into the split-pane's main pane once,
-         on upgrade (so the <iframe> is never moved/reloaded by
-         a later re-render). -->
-    <cobd-app-shell
-      site-title="{{site.title}}"
-      nav-path="{{nav.primary_slug}}"
-      more-title="More COBD"
-      more-path="{{nav.more_cobd_slug}}">
+         The iframe app window is the shell's other child; it
+         is relocated into the split-pane's main pane once, on
+         upgrade (so the <iframe> is never moved/reloaded by a
+         later re-render). -->
+    <cobd-app-shell site-title="{{site.title}}">
+      <ul slot="menu">
+        {{#each nav.items}}
+        <li><a href="{{this.href}}">{{this.label}}</a></li>
+        {{/each}}
+      </ul>
       <div id="iframe">
         <iframe name="app"></iframe>
       </div>

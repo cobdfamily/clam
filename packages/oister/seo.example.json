@@ -1,0 +1,22 @@
+{
+  "$comment": "Example seo.json -- the per-app page/site metadata the shell needs beyond branding (brand.json) and navigation (menu.json). renderApp merges this with brand.json, menu.json and the CDN manifest. description, url and image are required; everything else falls back to a brand-derived or COBD default.",
+  "lang": "en",
+  "title": "COBD",
+  "description": "The Community of Bowen Drive app.",
+  "url": "https://cobd.ca/",
+  "image": "https://cdn.blindhub.ca/clf-assets/og/cobd.png",
+  "ogType": "website",
+  "author": "Community of Bowen Drive",
+  "themeColorDark": "#1f2933",
+  "org": {
+    "url": "https://cobd.ca/",
+    "logoUrl": "https://cdn.blindhub.ca/clf-assets/logo/cobd.svg"
+  },
+  "social": {
+    "twitterHandle": "@cobd"
+  },
+  "i18n": {
+    "skipToMain": "Skip to main content",
+    "skipToSearch": "Skip to search"
+  }
+}
