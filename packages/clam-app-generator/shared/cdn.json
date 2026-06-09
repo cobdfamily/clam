@@ -6,7 +6,11 @@
   },
   "componentsJs": {
     "url": "https://cdn.blindhub.ca/clf-core/7.1.0/components/index.js",
-    "integrityAttr": "integrity=\"sha384-U1nAWSIyT6X7qxfrXORopxnOjPMXQpVAmauoC0+qPpu7HJDPFGgIblikhoSg2Zdo\" crossorigin=\"anonymous\""
+    "integrityAttr": "integrity=\"sha384-eokkwr1dt4r6LmhNSwYfg9MzsTe7MhVFzz/cxli0dHfoOtyY8R2hBh1yvGR6g6ee\" crossorigin=\"anonymous\""
+  },
+  "appsGridJs": {
+    "url": "https://cdn.blindhub.ca/clf-core/7.1.0/components/cobd-apps-grid.js",
+    "integrityAttr": "integrity=\"sha384-nk9NB5SILxZdDZqbQG73hkQBnmP5J8i88f0r5au+WhBf4zmHhhOMqYHiL0mrlUsn\" crossorigin=\"anonymous\""
   },
   "fontScalePaintJs": {
     "url": "https://cdn.blindhub.ca/clf-core/7.1.0/theming/font-scale-paint.js",
