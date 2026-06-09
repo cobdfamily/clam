@@ -56,9 +56,11 @@ build + sign.
 > webDir); `menu.json` is the side-drawer nav, `brand.json` the title + theme
 > colour, `seo.json` the page metadata. Tapping a launcher tile navigates the
 > WebView to that app (Capacitor's `allowNavigation` keeps in-domain apps inside
-> and sends off-domain ones to the system browser). The grid element loads from
-> `generator.config.json > appsGridJs` (the `@cobdfamily/cobd-apps-grid` bundle);
-> until that URL is set the grid `<script>` is omitted.
+> and sends off-domain ones to the system browser). The
+> `@cobdfamily/cobd-apps-grid` bundle is **self-hosted** — the generator
+> copies it into `www/cobd-apps-grid/` and references it relatively, so
+> the URL is set by the build and it works offline (set
+> `generator.config.json > appsGridJs.url` only to use a CDN instead).
 
 > The `cap add` / asset / sync steps need the native toolchains (Android SDK,
 > Xcode, CocoaPods). `--dry-run` and the `npm test` logic run anywhere.
@@ -119,10 +121,10 @@ paths, fetches each asset to compute its `sha384` integrity, and rewrites
 - Different side-drawer nav → edit that app's `menu.json`.
 - Different page metadata → edit the `seo` block in that app's `brand.json`.
 - Logo / og image → drop files in `apps/<id>/assets/` and reference them as `assets/…` (the generator self-hosts them and absolutizes og:image/logo to `apps.<domain>`).
-- Which web UI the shell loads → set `extra.appUrl` in that app's `brand.json`.
+- Allowed domains / app-bound + nav + `server.url` → set `extra.domains` in that app's `brand.json`.
+- Native permissions → set `extra.capabilities` in that app's `brand.json`.
 - Different icon → replace that app's `icon.png`.
-- Shared change → edit `shared/overlay.json` (native) or re-run `sync-cdn`
-  (CDN assets); every app inherits it on next regen.
+- Shared CDN refresh → re-run `sync-cdn` after a clf release; every app inherits it on next regen.
 
 ## Signing (survives regeneration)
 

@@ -4,13 +4,13 @@
   "extra": {
     "themeColor": "#31d53d",
     "domains": ["cobd.ca"],
-    "capabilities": ["location", "camera", "photos", "notifications"]
+    "capabilities": ["location", "camera", "notifications"]
   },
   "seo": {
-    "description": "The Community of Bowen Drive app.",
+    "description": "The Canadian Organization of the Blind and DeafBlind",
     "url": "https://cobd.ca/",
     "image": "assets/logo.svg",
-    "author": "Community of Bowen Drive",
+    "author": "The Canadian Organization of the Blind and DeafBlind",
     "themeColorDark": "#1f2933",
     "org": {
       "url": "https://cobd.ca/",

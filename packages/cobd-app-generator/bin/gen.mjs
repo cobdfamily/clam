@@ -16,8 +16,11 @@ import { execFileSync } from "node:child_process";
 import {
   cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+const require = createRequire(import.meta.url);
 
 import { loadAsset, renderApp, STATIC_ASSETS } from "@cobdfamily/oister";
 
@@ -72,12 +75,16 @@ function generate(config, app, { platforms, dryRun }) {
       "no cdnManifest configured. Set generator.config.json > cdnManifest to the clf CDN manifest (run `npm run sync-cdn` to generate shared/cdn.json).",
     );
   }
-  // clf-core CDN manifest (sync-cdn output) + the cobd-apps-grid bundle
-  // URL (not a clf asset, so it lives in generator.config.json, not
-  // shared/cdn.json which sync-cdn overwrites). An empty appsGridJs.url
-  // means the grid <script> is omitted until you publish + set it.
+  // clf-core CDN manifest (sync-cdn output) + the cobd-apps-grid bundle.
+  // By default the grid is self-hosted: its bundle is copied into the
+  // webDir below and referenced relatively, so the URL is set by the
+  // build (no separate publish) and it works offline. Override with a
+  // generator.config.json appsGridJs.url to load it from a CDN instead.
   const cdn = readJson(join(PKG_DIR, config.cdnManifest));
-  if (config.appsGridJs?.url) cdn.appsGridJs = config.appsGridJs;
+  const selfHostGrid = !config.appsGridJs?.url;
+  cdn.appsGridJs = selfHostGrid
+    ? { url: "cobd-apps-grid/index.js" }
+    : config.appsGridJs;
 
   // The shared web base is optional: the oister shell is now self-
   // contained (it loads the CLF runtime from the CDN; the launcher
@@ -104,6 +111,15 @@ function generate(config, app, { platforms, dryRun }) {
   // so branding is self-hosted (served from apps.<domain>, SW-cached).
   const assetsDir = join(dir, "assets");
   if (existsSync(assetsDir)) cpSync(assetsDir, join(www, "assets"), { recursive: true });
+
+  // Self-host the cobd-apps-grid bundle (registers <cobd-apps-grid>) in
+  // the webDir so the launcher works offline with no separate publish.
+  // Skipped when a config appsGridJs.url overrides it (CDN-hosted).
+  if (selfHostGrid) {
+    const gridDist = dirname(require.resolve("@cobdfamily/cobd-apps-grid"));
+    cpSync(gridDist, join(www, "cobd-apps-grid"), { recursive: true });
+    log("self-hosted @cobdfamily/cobd-apps-grid -> www/cobd-apps-grid/");
+  }
 
   // og:image + the JSON-LD logo must be absolute for external crawlers,
   // so resolve relative asset paths against apps.<domain>; in-app refs

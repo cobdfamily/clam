@@ -12,7 +12,7 @@
   "cdnBase": "https://cdn.blindhub.ca",
   "cdnManifest": "shared/cdn.json",
   "appsGridJs": {
-    "$comment": "URL of the @cobdfamily/cobd-apps-grid bundle that registers <cobd-apps-grid>. NOT a clf-core asset, so it's not managed by sync-cdn — set it once cobd-apps-grid is published. An empty url omits the grid <script> (the launcher won't populate).",
+    "$comment": "OPTIONAL override for where <cobd-apps-grid> loads from. By default the generator self-hosts the @cobdfamily/cobd-apps-grid bundle (copies it into each app's webDir, referenced relatively) so the URL is set by the build and it works offline. Set a url here only to load it from a CDN instead.",
     "url": "",
     "integrityAttr": ""
   },
