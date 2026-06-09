@@ -56,11 +56,12 @@ build + sign.
 > webDir); `menu.json` is the side-drawer nav, `brand.json` the title + theme
 > colour, `seo.json` the page metadata. Tapping a launcher tile navigates the
 > WebView to that app (Capacitor's `allowNavigation` keeps in-domain apps inside
-> and sends off-domain ones to the system browser). The
-> `@cobdfamily/cobd-apps-grid` bundle is **self-hosted** — the generator
-> copies it into `www/cobd-apps-grid/` and references it relatively, so
-> the URL is set by the build and it works offline (set
-> `generator.config.json > appsGridJs.url` only to use a CDN instead).
+> and sends off-domain ones to the system browser). `<cobd-apps-grid>` is a
+> **clf-core element**, shipped as a standalone CDN component (not part of
+> clf-core's `components/index.js` bundle, so web surfaces don't carry the
+> launcher); the shell loads it from its own `clf-core/<ver>/components/cobd-apps-grid.js`
+> URL, pinned + SRI'd in `shared/cdn.json` by `npm run sync-cdn` like every other
+> CDN asset, and SW-cached for offline.
 
 > The `cap add` / asset / sync steps need the native toolchains (Android SDK,
 > Xcode, CocoaPods). `--dry-run` and the `npm test` logic run anywhere.

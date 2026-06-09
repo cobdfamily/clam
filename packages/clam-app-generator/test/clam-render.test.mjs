@@ -89,15 +89,16 @@ test("static offline assets are bundled and loadable", () => {
 test("the launcher grid gets its path; its <script> is gated on cdn.appsGridJs", () => {
   const html = renderClamShell(exampleConfig());
   assert.match(html, /<cobd-apps-grid path="apps\.json" remember><\/cobd-apps-grid>/);
-  // appsGridJs is present in the example -> the grid script loads.
-  assert.match(html, /src="https:\/\/cdn\.blindhub\.ca\/cobd-apps-grid\/index\.js"/);
+  // appsGridJs is present in the example -> the grid script loads (a
+  // standalone clf-core CDN component, not the components/index.js bundle).
+  assert.match(html, /src="https:\/\/cdn\.blindhub\.ca\/clf-core\/[^"]*\/components\/cobd-apps-grid\.js"/);
   // No iframe in the launcher model.
   assert.doesNotMatch(html, /<iframe/);
 
   // Without appsGridJs, the grid <script> is omitted.
   const config = exampleConfig();
   delete config.cdn.appsGridJs;
-  assert.doesNotMatch(renderClamShell(config), /cobd-apps-grid\/index\.js/);
+  assert.doesNotMatch(renderClamShell(config), /components\/cobd-apps-grid\.js/);
 });
 
 test("integrity attributes are emitted raw, not HTML-escaped", () => {

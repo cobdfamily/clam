@@ -69,7 +69,7 @@
       "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
     },
     "appsGridJs": {
-      "url": "https://cdn.blindhub.ca/cobd-apps-grid/index.js",
+      "url": "https://cdn.blindhub.ca/clf-core/7.1.0/components/cobd-apps-grid.js",
       "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
     }
   }

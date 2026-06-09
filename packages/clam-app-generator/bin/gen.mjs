@@ -6,21 +6,25 @@
 // The shared web base is configured in generator.config.json > base. It is
 // currently unset (the cobdappkit package was removed); set it before a real run.
 //
+// The apps no longer live in this package — each app's springboard (its
+// brand.json / menu.json / apps.json / icon.png / assets) lives in that app's
+// own repo (e.g. cobdfamily/ca.cobd.apps at packages/springboard). Point the
+// generator at one with `--root`; the legacy in-package `apps/<app>` mode is
+// kept for back-compat.
+//
 // Usage:
-//   node bin/gen.mjs --list
-//   node bin/gen.mjs <app> [--platforms android,ios] [--dry-run]
-//   node bin/gen.mjs --all [--dry-run]
+//   node bin/gen.mjs --root <springboard-dir> [--platforms android,ios] [--name <label>] [--out <dir>] [--dry-run]
+//   node bin/gen.mjs --list                                  (legacy in-package apps/)
+//   node bin/gen.mjs <app> [--platforms android,ios] [--dry-run]   (legacy)
+//   node bin/gen.mjs --all [--dry-run]                       (legacy)
 
 import { parseArgs } from "node:util";
 import { execFileSync } from "node:child_process";
 import {
   cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
 } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
-const require = createRequire(import.meta.url);
 
 import { loadAsset, renderApp, STATIC_ASSETS } from "../src/clam.mjs";
 
@@ -48,22 +52,26 @@ function listApps(config) {
   });
 }
 
-function loadApp(config, app) {
-  const dir = join(PKG_DIR, config.appsDir, app);
-  if (!existsSync(dir)) throw new Error(`unknown app "${app}" — try --list`);
-  const rawBrand = readJson(join(dir, "brand.json"));
-  const brand = validateBrand(rawBrand, app);
-  const menu = validateMenu(readJson(join(dir, "menu.json")), app); // throws if bad
-  const seo = validateSeo(rawBrand.seo, app); // seo lives in brand.json now
-  validateApps(readJson(join(dir, "apps.json")), app); // launcher tiles; throws if bad
-  if (!existsSync(join(dir, "icon.png"))) {
-    log(`WARNING: apps/${app}/icon.png missing — @capacitor/assets will fail until you add a ≥1024px icon`);
+// Read + validate one app's inputs from a springboard directory (the dir that
+// holds brand.json / menu.json / apps.json / icon.png / assets). Used for both
+// `--root <dir>` (the app's own repo) and the legacy in-package `apps/<app>`.
+function loadAppDir(dir, label) {
+  if (!existsSync(join(dir, "brand.json"))) {
+    throw new Error(`no brand.json in ${dir} — point --root at an app springboard (e.g. packages/springboard)`);
   }
-  return { dir, brand, menu, seo };
+  const rawBrand = readJson(join(dir, "brand.json"));
+  const brand = validateBrand(rawBrand, label);
+  const menu = validateMenu(readJson(join(dir, "menu.json")), label); // throws if bad
+  const seo = validateSeo(rawBrand.seo, label); // seo lives in brand.json now
+  validateApps(readJson(join(dir, "apps.json")), label); // launcher tiles; throws if bad
+  if (!existsSync(join(dir, "icon.png"))) {
+    log(`WARNING: ${join(dir, "icon.png")} missing — @capacitor/assets will fail until you add a ≥1024px icon`);
+  }
+  return { brand, menu, seo };
 }
 
-function generate(config, app, { platforms, dryRun }) {
-  const { dir, brand, menu, seo } = loadApp(config, app);
+function generate(config, { app, dir, outBase, platforms, dryRun }) {
+  const { brand, menu, seo } = loadAppDir(dir, app);
   const plan = planSteps({ config, app, brand });
 
   log(`app "${app}"  →  ${brand.appName} (${brand.appId})  [${platforms.join(", ")}]`);
@@ -75,16 +83,12 @@ function generate(config, app, { platforms, dryRun }) {
       "no cdnManifest configured. Set generator.config.json > cdnManifest to the clf CDN manifest (run `npm run sync-cdn` to generate shared/cdn.json).",
     );
   }
-  // clf-core CDN manifest (sync-cdn output) + the cobd-apps-grid bundle.
-  // By default the grid is self-hosted: its bundle is copied into the
-  // webDir below and referenced relatively, so the URL is set by the
-  // build (no separate publish) and it works offline. Override with a
-  // generator.config.json appsGridJs.url to load it from a CDN instead.
+  // clf-core CDN manifest (sync-cdn output). It carries every shell
+  // asset including <cobd-apps-grid> (appsGridJs) — a clf-core element
+  // shipped as a standalone CDN component, loaded from its own URL
+  // (it's deliberately not in the components/index.js bundle), SW-cached
+  // for offline like the rest of the CDN runtime.
   const cdn = readJson(join(PKG_DIR, config.cdnManifest));
-  const selfHostGrid = !config.appsGridJs?.url;
-  cdn.appsGridJs = selfHostGrid
-    ? { url: "cobd-apps-grid/index.js" }
-    : config.appsGridJs;
 
   // The shared web base is optional: the clam shell is now self-
   // contained (it loads the CLF runtime from the CDN; the launcher
@@ -92,7 +96,7 @@ function generate(config, app, { platforms, dryRun }) {
   // first and the generated index.html overwrites any the base shipped.
   const hasBase = Boolean(config.base?.buildCommand && config.base?.distDir);
 
-  const out = join(PKG_DIR, config.outDir, app);
+  const out = join(outBase, config.outDir, app);
   const www = join(out, "www");
 
   // 1. clean  2. (optional) build base web  3. assemble webDir
@@ -111,15 +115,6 @@ function generate(config, app, { platforms, dryRun }) {
   // so branding is self-hosted (served from apps.<domain>, SW-cached).
   const assetsDir = join(dir, "assets");
   if (existsSync(assetsDir)) cpSync(assetsDir, join(www, "assets"), { recursive: true });
-
-  // Self-host the cobd-apps-grid bundle (registers <cobd-apps-grid>) in
-  // the webDir so the launcher works offline with no separate publish.
-  // Skipped when a config appsGridJs.url overrides it (CDN-hosted).
-  if (selfHostGrid) {
-    const gridDist = dirname(require.resolve("@cobdfamily/cobd-apps-grid"));
-    cpSync(gridDist, join(www, "cobd-apps-grid"), { recursive: true });
-    log("self-hosted @cobdfamily/cobd-apps-grid -> www/cobd-apps-grid/");
-  }
 
   // og:image + the JSON-LD logo must be absolute for external crawlers,
   // so resolve relative asset paths against apps.<domain>; in-app refs
@@ -295,6 +290,9 @@ function injectAndroidPermissions(manifestPath, permissions) {
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
+    root: { type: "string" },       // springboard dir (an app's own repo)
+    out: { type: "string" },        // output base (default: the springboard dir, or PKG_DIR for legacy)
+    name: { type: "string" },       // output-subdir label (default: brand.appId)
     platforms: { type: "string" },
     "dry-run": { type: "boolean", default: false },
     all: { type: "boolean", default: false },
@@ -305,10 +303,12 @@ const { values, positionals } = parseArgs({
 
 if (values.help) {
   process.stdout.write(`clam-app-generator
-  --list                 list available apps
-  <app> [--dry-run]      regenerate one app
-  --all  [--dry-run]     regenerate every app
+  --root <dir>           generate from an app springboard (its brand/menu/apps/icon)
+  --name <label>         output subdir under <out>/.generated (default: brand.appId)
+  --out <dir>            output base (default: the --root dir)
   --platforms a,b        override platforms (default from generator.config.json)
+  --dry-run              plan only, run nothing
+  legacy (in-package apps/): --list | <app> | --all
 `);
   process.exit(0);
 }
@@ -316,6 +316,23 @@ if (values.help) {
 const config = loadConfig();
 const platforms = values.platforms ? values.platforms.split(",").map((s) => s.trim()) : config.platforms;
 
+// Springboard mode: one app, read from --root <dir> (the app's own repo).
+if (values.root) {
+  const dir = resolve(values.root);
+  const label = values.name
+    ?? (existsSync(join(dir, "brand.json")) ? readJson(join(dir, "brand.json")).appId : null)
+    ?? basename(dir);
+  const outBase = values.out ? resolve(values.out) : dir;
+  try {
+    generate(config, { app: label, dir, outBase, platforms, dryRun: values["dry-run"] });
+  } catch (err) {
+    process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+// Legacy in-package apps/<app> mode.
 if (values.list) {
   for (const a of listApps(config)) log(a);
   process.exit(0);
@@ -323,11 +340,16 @@ if (values.list) {
 
 const apps = values.all ? listApps(config) : positionals;
 if (apps.length === 0) {
-  process.stderr.write("error: name an app, or use --all / --list\n");
+  process.stderr.write("error: use --root <springboard>, or name an app / --all / --list\n");
   process.exit(1);
 }
 try {
-  for (const app of apps) generate(config, app, { platforms, dryRun: values["dry-run"] });
+  for (const app of apps) {
+    generate(config, {
+      app, dir: join(PKG_DIR, config.appsDir, app), outBase: PKG_DIR,
+      platforms, dryRun: values["dry-run"],
+    });
+  }
 } catch (err) {
   process.stderr.write(`error: ${err instanceof Error ? err.message : String(err)}\n`);
   process.exit(1);

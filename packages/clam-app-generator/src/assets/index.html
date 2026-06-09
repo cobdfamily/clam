@@ -112,9 +112,10 @@
        load-bearing verification. -->
   <script type="module" {{{cdn.componentsJs.integrityAttr}}} src="{{cdn.componentsJs.url}}"></script>
   {{#if cdn.appsGridJs.url}}
-  <!-- @cobdfamily/cobd-apps-grid registers <cobd-apps-grid>. It's a
-       separate package (not part of the clf-core components bundle
-       above), so it loads from its own URL. -->
+  <!-- <cobd-apps-grid> is a clf-core element shipped as a standalone
+       component — deliberately NOT in the components/index.js bundle
+       above (web surfaces don't need the launcher), so it loads from
+       its own clf-core CDN URL. -->
   <script type="module" {{{cdn.appsGridJs.integrityAttr}}} src="{{cdn.appsGridJs.url}}"></script>
   {{/if}}
 </head>

@@ -99,6 +99,10 @@ export function validateConfig(config) {
 const CDN_ASSETS = {
   tokensCss:        ["clfCommon", "tokens.css"],
   componentsJs:     ["clfCommon", "components/index.js"],
+  // The <cobd-apps-grid> launcher: a clf-core element shipped as a
+  // standalone component (deliberately NOT in components/index.js),
+  // so the shell loads it from its own URL. Lives in clf-core since 7.x.
+  appsGridJs:       ["clfCommon", "components/cobd-apps-grid.js"],
   fontScalePaintJs: ["clfCommon", "theming/font-scale-paint.js"],
   chromeCss:        ["clfFactoryChrome", "chrome.css"],
   printCss:         ["clfFactoryChrome", "print.css"],
@@ -239,7 +243,7 @@ export function planSteps({ config, app, brand }) {
     { id: "install", desc: `npm install in the ephemeral project` },
     { id: "cap-add", desc: `npx cap add ${platforms}` },
     { id: "overlay-native", desc: `apply native permissions from extra.capabilities (Info.plist + InfoPlist.strings + knownRegions, Android perms) + WKAppBoundDomains from extra.domains` },
-    { id: "assets", desc: `npx capacitor-assets generate (from apps/${app}/icon.png)` },
+    { id: "assets", desc: `npx capacitor-assets generate (from the springboard's icon.png)` },
     { id: "cap-sync", desc: `npx cap sync` },
     { id: "build-sign", desc: `build + sign (CI): gradle (Android) / fastlane match + xcodebuild (iOS)` },
   ];

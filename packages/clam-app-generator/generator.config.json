@@ -11,10 +11,5 @@
   "sharedOverlay": "shared/overlay.json",
   "cdnBase": "https://cdn.blindhub.ca",
   "cdnManifest": "shared/cdn.json",
-  "appsGridJs": {
-    "$comment": "OPTIONAL override for where <cobd-apps-grid> loads from. By default the generator self-hosts the @cobdfamily/cobd-apps-grid bundle (copies it into each app's webDir, referenced relatively) so the URL is set by the build and it works offline. Set a url here only to load it from a CDN instead.",
-    "url": "",
-    "integrityAttr": ""
-  },
   "outDir": ".generated"
 }
