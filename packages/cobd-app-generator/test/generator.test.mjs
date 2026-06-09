@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { renderApp } from "@cobdfamily/oister";
+import { renderApp } from "../src/oister.mjs";
 
 import {
   absolutizeAsset, addKnownRegions, allowNavigation, appDomains, appsOrigin,

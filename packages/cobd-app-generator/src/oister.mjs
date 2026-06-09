@@ -1,27 +1,24 @@
 // Rendering the oister umbrella shell.
 //
-//   renderApp({ brand, menu, seo, cdn })  -- the high-level entry:
-//      maps the per-app source files cobd-app-generator already has
-//      onto an OisterConfig and renders. This is what the generator
-//      calls; the returned string drops straight into the app's
-//      webDir/index.html.
+// Folded in from the former @cobdfamily/oister package (it had a single
+// consumer — this generator — and wasn't published, so it lived here as a
+// build-time renderer behind a dist/ import). Ported to plain .mjs to keep the
+// generator build-free.
 //
-//   renderOisterShell(config)             -- the low-level core:
-//      compiles the bundled Handlebars template and renders a
+//   renderApp({ brand, menu, seo, cdn })  -- the high-level entry: maps the
+//      per-app source files (brand.json + menu.json + seo + the CDN manifest)
+//      onto an OisterConfig and renders. The returned string drops straight
+//      into the app's webDir/index.html.
+//
+//   renderOisterShell(config)             -- the low-level core: compiles the
+//      bundled Handlebars template (./assets/index.html) and renders a
 //      fully-resolved OisterConfig.
-//
-// The template (src/assets/index.html, copied to dist/assets/ at
-// build time) is Handlebars; this module registers the one helper
-// it needs (`json`, for the JSON-LD block) and renders.
 
 import Handlebars from "handlebars";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type {
-    AppInput, Brand, Menu, MenuItem, OisterConfig,
-} from "./types.js";
 
-// COBD defaults for fields a per-app seo.json may omit.
+// COBD defaults for fields a per-app seo block may omit.
 const DEFAULT_LANG = "en";
 const DEFAULT_OG_TYPE = "website";
 const DEFAULT_THEME_COLOR = "#31d53d";
@@ -32,16 +29,15 @@ const DEFAULT_SKIP_TO_SEARCH = "Skip to search";
 const REQUIRED_CDN_ASSETS = [
     "tokensCss", "printCss", "chromeCss", "ionicCss",
     "ionicEsm", "ioniconsEsm", "fontScalePaintJs", "componentsJs",
-] as const;
+];
 
 /**
- * Throw a descriptive error if `config` is missing a field the
- * template depends on. Fails loud at the boundary rather than
- * rendering a page with empty holes -- the same posture as
- * cobd-app-generator's validateBrand/validateMenu.
+ * Throw a descriptive error if `config` is missing a field the template
+ * depends on. Fails loud at the boundary rather than rendering a page with
+ * empty holes — the same posture as the generator's validateBrand/validateMenu.
  */
-export function validateOisterConfig(config: OisterConfig): void {
-    const need = (cond: unknown, msg: string): void => {
+export function validateOisterConfig(config) {
+    const need = (cond, msg) => {
         if (!cond) throw new Error(`oister config: ${msg}`);
     };
     need(config?.site?.title, "site.title is required");
@@ -53,15 +49,15 @@ export function validateOisterConfig(config: OisterConfig): void {
     }
 }
 
-/** Validate a brand.json the way cobd-app-generator does. */
-function validateBrand(brand: Brand): void {
+/** Validate a brand.json the way the generator does. */
+function validateBrand(brand) {
     if (!brand?.appName || typeof brand.appName !== "string") {
         throw new Error("brand.json: appName is required");
     }
 }
 
 /** Accept either the bare array or `{ items: [...] }`; validate items. */
-function normalizeMenu(menu: Menu): MenuItem[] {
+function normalizeMenu(menu) {
     const items = Array.isArray(menu) ? menu : menu?.items;
     if (!Array.isArray(items)) {
         throw new Error("menu.json: expected an array or { items: [...] }");
@@ -76,11 +72,11 @@ function normalizeMenu(menu: Menu): MenuItem[] {
 }
 
 /**
- * Map the per-app source files (brand.json + menu.json + seo.json +
- * the CDN manifest) onto a fully-resolved OisterConfig, applying
- * COBD defaults for anything seo.json leaves out.
+ * Map the per-app source files (brand.json + menu.json + seo + the CDN
+ * manifest) onto a fully-resolved OisterConfig, applying COBD defaults for
+ * anything the seo block leaves out.
  */
-export function appToConfig(input: AppInput): OisterConfig {
+export function appToConfig(input) {
     const { brand, menu, seo, cdn } = input;
     validateBrand(brand);
     const items = normalizeMenu(menu);
@@ -120,43 +116,37 @@ export function appToConfig(input: AppInput): OisterConfig {
 }
 
 /**
- * A private Handlebars environment with the shell's helpers
- * registered. Created per render so concurrent callers can't see
- * each other's helper state.
+ * A private Handlebars environment with the shell's helpers registered.
+ * Created per render so concurrent callers can't see each other's helper state.
  */
-function createHandlebars(): typeof Handlebars {
+function createHandlebars() {
     const hb = Handlebars.create();
     // {{json x}} -> JSON-encoded value (a SafeString, so it is not
-    // HTML-escaped). Used inside the JSON-LD <script>, where HTML
-    // escaping would corrupt the JSON; JSON.stringify keeps quotes
-    // and special characters valid.
-    hb.registerHelper("json", (value: unknown) =>
+    // HTML-escaped). Used inside the JSON-LD <script>, where HTML escaping
+    // would corrupt the JSON; JSON.stringify keeps quotes and special
+    // characters valid.
+    hb.registerHelper("json", (value) =>
         new hb.SafeString(JSON.stringify(value ?? null)));
     return hb;
 }
 
 /**
- * Static (non-templated) assets shipped with the shell that the
- * generator must copy into the app's webDir next to index.html: the
- * offline service worker, its registration script, and the offline
- * fallback page.
+ * Static (non-templated) assets shipped with the shell that the generator must
+ * copy into the app's webDir next to index.html: the offline service worker,
+ * its registration script, and the offline fallback page.
  */
 export const STATIC_ASSETS = ["sw.js", "sw-register.js", "offline.html"];
 
-/** Read one bundled static asset (from dist/assets/, or src/ under tsx). */
-export function loadAsset(name: string): string {
+/** Read one bundled static asset (from ./assets/). */
+export function loadAsset(name) {
     const path = fileURLToPath(new URL(`./assets/${name}`, import.meta.url));
     return readFileSync(path, "utf8");
 }
 
-let cachedTemplate: string | null = null;
+let cachedTemplate = null;
 
-/**
- * The bundled Handlebars template source. Resolved relative to this
- * module so it works from both `src/` (tests via tsx) and `dist/`
- * (the published package, where build/copy-assets.mjs places it).
- */
-export function loadBundledTemplate(): string {
+/** The bundled Handlebars template source (./assets/index.html). */
+export function loadBundledTemplate() {
     if (cachedTemplate === null) {
         const path = fileURLToPath(
             new URL("./assets/index.html", import.meta.url));
@@ -167,15 +157,10 @@ export function loadBundledTemplate(): string {
 
 /**
  * Render the oister umbrella-shell index.html from a fully-resolved
- * OisterConfig. Returns the finished HTML page as a string.
- *
- * Pass `templateSrc` to render an alternate template (used by tests);
- * it defaults to the bundled one.
+ * OisterConfig. Returns the finished HTML page as a string. Pass `templateSrc`
+ * to render an alternate template (used by tests); defaults to the bundled one.
  */
-export function renderOisterShell(
-    config: OisterConfig,
-    templateSrc: string = loadBundledTemplate(),
-): string {
+export function renderOisterShell(config, templateSrc = loadBundledTemplate()) {
     validateOisterConfig(config);
     const hb = createHandlebars();
     const template = hb.compile(templateSrc);
@@ -183,14 +168,10 @@ export function renderOisterShell(
 }
 
 /**
- * Render the shell straight from the per-app source files
- * (brand.json + menu.json + seo.json + the CDN manifest). Returns
- * the finished page as a string -- drop it into the generated app's
- * webDir (e.g. `.generated/<app>/www/index.html`).
+ * Render the shell straight from the per-app source files (brand.json +
+ * menu.json + seo + the CDN manifest). Returns the finished page as a string —
+ * drop it into the generated app's webDir (e.g. `.generated/<app>/www/index.html`).
  */
-export function renderApp(
-    input: AppInput,
-    templateSrc: string = loadBundledTemplate(),
-): string {
+export function renderApp(input, templateSrc = loadBundledTemplate()) {
     return renderOisterShell(appToConfig(input), templateSrc);
 }

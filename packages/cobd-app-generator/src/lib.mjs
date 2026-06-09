@@ -68,8 +68,8 @@ export function validateApps(apps, appName) {
  * Validate an app's SEO metadata (the `seo` block of brand.json):
  * the page/site metadata the oister shell needs beyond branding +
  * nav. description/url/image are required (no sane default); the rest
- * is filled by @cobdfamily/oister's renderApp from brand-derived or
- * COBD defaults.
+ * is filled by the shell renderer (src/oister.mjs renderApp) from
+ * brand-derived or COBD defaults.
  */
 export function validateSeo(seo, appName) {
   const where = `apps/${appName ?? "?"}/brand.json (seo)`;
@@ -233,7 +233,7 @@ export function planSteps({ config, app, brand }) {
   return [
     { id: "clean", desc: `wipe ${config.outDir}/${app} (native projects are disposable)` },
     { id: "build-web", desc: `build base web: ${config.base?.buildCommand || "(no base configured — oister shell only)"}` },
-    { id: "assemble-web", desc: `copy base dist + overlay assets (menu.json, apps.json, brand.json) into webDir; render index.html + offline service worker via @cobdfamily/oister` },
+    { id: "assemble-web", desc: `copy base dist + overlay assets (menu.json, apps.json, brand.json) into webDir; render index.html + offline service worker (oister shell renderer)` },
     { id: "sws-image", desc: `emit a per-app static-web-server image context (Dockerfile + sws.toml) serving the webDir` },
     { id: "scaffold", desc: `write package.json (Capacitor pinned ${ver}) + capacitor.config.ts (appId=${brand.appId}, appName=${brand.appName})` },
     { id: "install", desc: `npm install in the ephemeral project` },

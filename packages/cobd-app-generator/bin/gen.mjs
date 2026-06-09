@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 
 const require = createRequire(import.meta.url);
 
-import { loadAsset, renderApp, STATIC_ASSETS } from "@cobdfamily/oister";
+import { loadAsset, renderApp, STATIC_ASSETS } from "../src/oister.mjs";
 
 import {
   absolutizeAsset, addKnownRegions, appDomains, appsOrigin,

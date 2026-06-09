@@ -2,7 +2,7 @@
 
 Generates the family of near-identical Capacitor apps. Each app's web layer is
 the **oister umbrella shell** (rendered from its `brand.json` + `menu.json` +
-`seo.json` via [`@cobdfamily/oister`](../oister)); the apps differ only by
+`seo.json` via the bundled oister shell renderer (`src/oister.mjs`)); the apps differ only by
 **identifier**, **icon**, **menu**, and **SEO/branding**.
 
 > The shared web `base` is **optional** — the oister shell is self-contained
@@ -45,7 +45,7 @@ node bin/gen.mjs --all                    # regenerate every app
 
 Each run: build base web → assemble webDir (this app's `menu.json` + `apps.json` +
 `brand.json`, and render `index.html` from `brand.json` + `menu.json` + `seo.json`
-+ `shared/cdn.json` via [`@cobdfamily/oister`](../oister)) → scaffold an ephemeral
++ `shared/cdn.json` via the bundled oister shell renderer (`src/oister.mjs`)) → scaffold an ephemeral
 project at the pinned version → `npm install` → `cap add` → apply native
 permissions (from `brand.extra.capabilities`) → `@capacitor/assets` (icon/splash
 from `icon.png`) → `cap sync`. The result in `.generated/<app>/` is ready to
@@ -68,7 +68,7 @@ build + sign.
 ## Offline + serving the shell
 
 Each app's webDir gets an offline **service worker** (`sw.js` +
-`sw-register.js` + `offline.html`, from `@cobdfamily/oister`): it
+`sw-register.js` + `offline.html`, from the bundled oister shell renderer): it
 precaches the shell (`index.html` + the JSON) and runtime-caches the
 CLF CDN assets and visited pages, so the launcher works offline. In a
 Capacitor WebView the SW needs **app-bound domains** turned on — which

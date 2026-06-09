@@ -49,7 +49,7 @@ jobs:
       - name: Install + build workspace packages
         run: |
           npm install
-          npm run build -w @cobdfamily/cobdcorekit -w @cobdfamily/cobd-apps-grid -w @cobdfamily/oister
+          npm run build -w @cobdfamily/cobdcorekit -w @cobdfamily/cobd-apps-grid
 
       - name: Regenerate ${{ matrix.app }} (android)
         working-directory: packages/cobd-app-generator
@@ -102,7 +102,7 @@ jobs:
       - name: Install + build workspace packages
         run: |
           npm install
-          npm run build -w @cobdfamily/cobdcorekit -w @cobdfamily/cobd-apps-grid -w @cobdfamily/oister
+          npm run build -w @cobdfamily/cobdcorekit -w @cobdfamily/cobd-apps-grid
 
       - name: Regenerate ${{ matrix.app }} (ios)
         working-directory: packages/cobd-app-generator

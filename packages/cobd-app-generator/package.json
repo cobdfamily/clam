@@ -11,12 +11,12 @@
   "scripts": {
     "gen": "node bin/gen.mjs",
     "sync-cdn": "node bin/sync-cdn.mjs",
-    "pretest": "npm run build -w @cobdfamily/cobdcorekit && npm run build -w @cobdfamily/cobd-apps-grid && npm run build -w @cobdfamily/oister",
+    "pretest": "npm run build -w @cobdfamily/cobdcorekit && npm run build -w @cobdfamily/cobd-apps-grid",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@cobdfamily/cobd-apps-grid": "*",
     "@cobdfamily/cobdcorekit": "*",
-    "@cobdfamily/oister": "*"
+    "handlebars": "^4.7.8"
   }
 }
