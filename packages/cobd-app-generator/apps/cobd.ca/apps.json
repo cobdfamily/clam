@@ -1,9 +1,0 @@
-{
-  "$comment": "Launcher tiles for <cobd-apps-grid> on this app's home screen. Each tile: label + href (+ optional icon inline-SVG / iconUrl / target). Distinct from menu.json (the side-drawer nav).",
-  "apps": [
-    { "label": "Ferry", "href": "https://ferry.cobd.ca/" },
-    { "label": "Lift", "href": "https://lift.cobd.ca/" },
-    { "label": "Forum", "href": "https://forum.cobd.ca/" },
-    { "label": "Learn", "href": "https://learn.cobd.ca/" }
-  ]
-}

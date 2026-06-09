@@ -1,7 +1,0 @@
-{
-  "items": [
-    { "label": "Home", "target": "/welcome" },
-    { "label": "Schedule", "target": "/schedule" },
-    { "label": "Contact", "target": "/contact" }
-  ]
-}
