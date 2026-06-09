@@ -32,8 +32,8 @@
       { "label": "About", "href": "/about" }
     ]
   },
-  "app": {
-    "url": "https://cobd.ca/"
+  "apps": {
+    "path": "apps.json"
   },
   "cdn": {
     "tokensCss": {
@@ -66,6 +66,10 @@
     },
     "componentsJs": {
       "url": "https://cdn.blindhub.ca/clf-core/components/index.js",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    },
+    "appsGridJs": {
+      "url": "https://cdn.blindhub.ca/cobd-apps-grid/index.js",
       "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
     }
   }

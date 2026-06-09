@@ -1,0 +1,8 @@
+{
+  "$comment": "Launcher tiles for <cobd-apps-grid>. label + href (+ optional icon/iconUrl/target).",
+  "apps": [
+    { "label": "News", "href": "https://bowencommunity.ca/news" },
+    { "label": "Forum", "href": "https://forum.bowencommunity.ca/" },
+    { "label": "Events", "href": "https://bowencommunity.ca/events" }
+  ]
+}

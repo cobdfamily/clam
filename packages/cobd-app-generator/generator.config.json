@@ -11,5 +11,10 @@
   "sharedOverlay": "shared/overlay.json",
   "cdnBase": "https://cdn.blindhub.ca",
   "cdnManifest": "shared/cdn.json",
+  "appsGridJs": {
+    "$comment": "URL of the @cobdfamily/cobd-apps-grid bundle that registers <cobd-apps-grid>. NOT a clf-core asset, so it's not managed by sync-cdn — set it once cobd-apps-grid is published. An empty url omits the grid <script> (the launcher won't populate).",
+    "url": "",
+    "integrityAttr": ""
+  },
   "outDir": ".generated"
 }

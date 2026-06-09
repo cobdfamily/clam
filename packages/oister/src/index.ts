@@ -16,4 +16,6 @@ export {
     appToConfig,
     validateOisterConfig,
     loadBundledTemplate,
+    loadAsset,
+    STATIC_ASSETS,
 } from "./generate.js";

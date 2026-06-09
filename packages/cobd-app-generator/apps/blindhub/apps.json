@@ -1,0 +1,8 @@
+{
+  "$comment": "Launcher tiles for <cobd-apps-grid>. label + href (+ optional icon/iconUrl/target).",
+  "apps": [
+    { "label": "Hub", "href": "https://blindhub.ca/" },
+    { "label": "Forum", "href": "https://forum.blindhub.ca/" },
+    { "label": "Learn", "href": "https://learn.blindhub.ca/" }
+  ]
+}

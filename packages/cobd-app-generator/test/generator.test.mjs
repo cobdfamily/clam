@@ -4,9 +4,10 @@ import assert from "node:assert/strict";
 import { renderApp } from "@cobdfamily/oister";
 
 import {
-  addKnownRegions, cdnUrlsFromManifest, collectPermissions, planSteps,
-  renderCapacitorConfig, renderProjectPackageJson, validateBrand,
-  validateConfig, validateMenu, validateSeo,
+  addKnownRegions, allowNavigation, appDomains, cdnUrlsFromManifest,
+  collectPermissions, planSteps, renderCapacitorConfig,
+  renderProjectPackageJson, renderSwsConfig, renderSwsDockerfile,
+  validateApps, validateBrand, validateConfig, validateMenu, validateSeo,
 } from "../src/lib.mjs";
 
 test("validateBrand accepts a reverse-DNS appId and requires appName", () => {
@@ -114,6 +115,50 @@ test("addKnownRegions quotes non-bare region codes and no-ops without a block", 
   assert.equal(addKnownRegions("no regions here", ["fr"]), "no regions here");
 });
 
+test("validateApps accepts array or { apps } and requires label + href", () => {
+  assert.equal(validateApps([{ label: "Ferry", href: "https://ferry/" }]).length, 1);
+  assert.equal(validateApps({ apps: [{ label: "A", href: "/a" }] }).length, 1);
+  assert.throws(() => validateApps([{ label: "no href" }]), /href/);
+  assert.throws(() => validateApps([{ href: "/x" }]), /label/);
+  assert.throws(() => validateApps("nope"), /expected an array/);
+});
+
+test("appDomains + allowNavigation read brand.extra and build nav patterns", () => {
+  assert.deepEqual(
+    appDomains({ extra: { domains: ["BowenCommunity.ca ", "bowencommunity.ca"] } }),
+    ["bowencommunity.ca"]); // lowercased, trimmed, deduped
+  assert.deepEqual(appDomains({ extra: { domain: "cobd.ca" } }), ["cobd.ca"]);
+  assert.deepEqual(appDomains({}), []);
+  assert.deepEqual(allowNavigation(["bowencommunity.ca"]),
+    ["bowencommunity.ca", "*.bowencommunity.ca"]);
+});
+
+test("renderCapacitorConfig derives allowNavigation + app-bound domains from extra.domains", () => {
+  const brand = validateBrand(
+    { appId: "ca.cobd.app.alpha", appName: "Alpha", extra: { domains: ["bowencommunity.ca"] } },
+    "alpha");
+  const cfg = renderCapacitorConfig(brand);
+  assert.match(cfg, /allowNavigation: \["bowencommunity\.ca","\*\.bowencommunity\.ca"\]/);
+  assert.match(cfg, /limitsNavigationsToAppBoundDomains: true/);
+  // No domains -> neither block (minimal config).
+  const bare = renderCapacitorConfig(validateBrand({ appId: "ca.cobd.x", appName: "X" }, "x"));
+  assert.doesNotMatch(bare, /allowNavigation/);
+  assert.doesNotMatch(bare, /limitsNavigationsToAppBoundDomains/);
+});
+
+test("renderSwsConfig + renderSwsDockerfile produce a per-app sws image context", () => {
+  const cfg = renderSwsConfig();
+  assert.match(cfg, /\[general\]/);
+  assert.match(cfg, /root = "\/public"/);
+  assert.match(cfg, /port = 8080/);
+
+  const brand = validateBrand({ appId: "ca.cobd.app.alpha", appName: "Alpha" }, "alpha");
+  const dockerfile = renderSwsDockerfile(brand);
+  assert.match(dockerfile, /FROM joseluisq\/static-web-server:2-alpine/);
+  assert.match(dockerfile, /COPY www \/public/);
+  assert.match(dockerfile, /cobdfamily\/oister-ca-cobd-app-alpha/); // appId dots -> dashes
+});
+
 test("validateConfig defaults platforms and rejects unknown ones", () => {
   assert.deepEqual(validateConfig({ capacitorVersion: "8.4.0" }).platforms, ["android", "ios"]);
   assert.throws(() => validateConfig({ capacitorVersion: "8", platforms: ["web"] }), /unknown platform/);
@@ -125,7 +170,7 @@ test("planSteps states approach D in order and pins the version", () => {
   const steps = planSteps({ config, app: "alpha", brand });
   const ids = steps.map((s) => s.id);
   assert.deepEqual(ids, [
-    "clean", "build-web", "assemble-web", "scaffold", "install",
+    "clean", "build-web", "assemble-web", "sws-image", "scaffold", "install",
     "cap-add", "overlay-native", "assets", "cap-sync", "build-sign",
   ]);
   assert.match(steps.find((s) => s.id === "scaffold").desc, /pinned 8\.4\.0/);

@@ -40,9 +40,15 @@ than emitting a page with empty holes.
 | Input    | Source                              | Provides                                  |
 |----------|-------------------------------------|-------------------------------------------|
 | `brand`  | the app's `brand.json` (unchanged)  | `appName` → title, `extra.themeColor`     |
-| `menu`   | the app's `menu.json` (unchanged)   | the single nav list (`items: label/target`) |
-| `seo`    | a **new `seo.json`** (per app)      | lang, description, url, image, og, org, social, i18n, dark colour |
-| `cdn`    | the clf-core CDN/SRI manifest       | the 8 asset URLs + `integrityAttr`        |
+| `menu`   | the app's `menu.json` (unchanged)   | the side-drawer nav list (`items: label/target`) |
+| `seo`    | a `seo.json` (per app)              | lang, description, url, image, og, org, social, i18n, dark colour |
+| `cdn`    | the clf-core CDN/SRI manifest (+ optional `appsGridJs`) | the asset URLs + `integrityAttr` |
+| `appsPath` | (default `"apps.json"`)           | URL the home-screen `<cobd-apps-grid>` fetches its tiles from |
+
+The home screen is a `<cobd-apps-grid>` (the launcher) whose tiles
+come from `apps.path`; `<cobd-apps-grid>` is a separate package, so
+its bundle loads from `cdn.appsGridJs` (omitted when unset). Tapping
+a tile navigates the WebView to that app (top-level — no iframe).
 
 `brand.json` and `menu.json` are the exact files
 cobd-app-generator already keeps under `apps/<app>/`. `seo.json`

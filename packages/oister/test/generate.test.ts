@@ -12,6 +12,8 @@ import {
     renderOisterShell,
     appToConfig,
     validateOisterConfig,
+    loadAsset,
+    STATIC_ASSETS,
 } from "../src/index.js";
 import type {
     AppInput, Brand, Menu, OisterConfig, Seo,
@@ -75,13 +77,31 @@ test("leaves no unsubstituted handlebars tokens", () => {
     assert.doesNotMatch(html, /\{\{/, "found an unrendered {{ token");
 });
 
-test("the iframe gets a src from app.url, and none when unset", () => {
-    const withUrl = renderOisterShell(exampleConfig());
-    assert.match(withUrl, /<iframe name="app" src="https:\/\/cobd\.ca\/">/);
+test("registers the service worker via an external (CSP-safe) script", () => {
+    const html = renderOisterShell(exampleConfig());
+    assert.match(html, /<script src="sw-register\.js"><\/script>/);
+    assert.doesNotMatch(html, /navigator\.serviceWorker/); // not inline
+});
+
+test("static offline assets are bundled and loadable", () => {
+    assert.deepEqual(STATIC_ASSETS, ["sw.js", "sw-register.js", "offline.html"]);
+    assert.match(loadAsset("sw.js"), /serviceWorker|caches|fetch/);
+    assert.match(loadAsset("sw-register.js"), /serviceWorker\.register\("sw\.js"\)/);
+    assert.match(loadAsset("offline.html"), /You're offline/);
+});
+
+test("the launcher grid gets its path; its <script> is gated on cdn.appsGridJs", () => {
+    const html = renderOisterShell(exampleConfig());
+    assert.match(html, /<cobd-apps-grid path="apps\.json" remember><\/cobd-apps-grid>/);
+    // appsGridJs is present in the example -> the grid script loads.
+    assert.match(html, /src="https:\/\/cdn\.blindhub\.ca\/cobd-apps-grid\/index\.js"/);
+    // No iframe in the launcher model.
+    assert.doesNotMatch(html, /<iframe/);
+
+    // Without appsGridJs, the grid <script> is omitted.
     const config = exampleConfig();
-    config.app = { url: "" };
-    const noUrl = renderOisterShell(config);
-    assert.match(noUrl, /<iframe name="app"><\/iframe>/);
+    delete config.cdn.appsGridJs;
+    assert.doesNotMatch(renderOisterShell(config), /cobd-apps-grid\/index\.js/);
 });
 
 test("integrity attributes are emitted raw, not HTML-escaped", () => {
@@ -157,19 +177,11 @@ test("appToConfig applies COBD defaults when seo omits fields", () => {
     assert.equal(config.site.themeColor, "#31d53d");   // -> brand.extra
 });
 
-test("appToConfig reads the iframe app url from brand.extra.appUrl", () => {
-    const brand: Brand = {
-        appId: "ca.cobd.x",
-        appName: "X",
-        extra: { appUrl: "https://app.example/" },
-    };
-    const config = appToConfig(exampleAppInput({ brand }));
-    assert.equal(config.app.url, "https://app.example/");
-    // absent -> empty string (iframe renders with no src)
-    const bare = appToConfig(exampleAppInput({
-        brand: { appId: "ca.cobd.y", appName: "Y" },
-    }));
-    assert.equal(bare.app.url, "");
+test("appToConfig sets apps.path (default 'apps.json', overridable)", () => {
+    assert.equal(appToConfig(exampleAppInput()).apps.path, "apps.json");
+    assert.equal(
+        appToConfig(exampleAppInput({ appsPath: "/cdn/apps.json" })).apps.path,
+        "/cdn/apps.json");
 });
 
 test("appToConfig accepts a bare-array menu", () => {

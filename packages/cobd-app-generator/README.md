@@ -20,12 +20,13 @@ checked-in native projects to migrate.
 
 ```
 generator.config.json     pinned Capacitor version, platforms, base ref   ← bump to upgrade ALL apps
-shared/overlay.json       native config shared by every app (iOS Info.plist keys, Android perms)
+shared/overlay.json       DEPRECATED — permissions are now per-app (brand extra.capabilities)
 shared/cdn.json           CDN/SRI manifest the oister shell loads (URLs + integrity)
 apps/<id>/
-  brand.json              { appId, appName, extra }     ← the identifier + theme colour
+  brand.json              { appId, appName, extra }     ← identifier + theme + capabilities + domains
   icon.png                ≥1024px source                ← the icon (you add this)
-  menu.json               nav items                     ← the menu asset
+  menu.json               side-drawer nav items         ← {label, target}
+  apps.json               home-screen launcher tiles    ← {label, href, icon} for <cobd-apps-grid>
   seo.json                page/site metadata            ← title/description/url/image/og
 bin/gen.mjs               the generator CLI
 src/lib.mjs               pure, tested core logic
@@ -42,20 +43,57 @@ node bin/gen.mjs alpha                    # regenerate one app (needs the native
 node bin/gen.mjs --all                    # regenerate every app
 ```
 
-Each run: build base web → assemble webDir (base dist + this app's `menu.json` +
+Each run: build base web → assemble webDir (this app's `menu.json` + `apps.json` +
 `brand.json`, and render `index.html` from `brand.json` + `menu.json` + `seo.json`
 + `shared/cdn.json` via [`@cobdfamily/oister`](../oister)) → scaffold an ephemeral
-project at the pinned version → `npm install` → `cap add` → apply the shared
-native overlay → `@capacitor/assets` (icon/splash from `icon.png`) → `cap sync`.
-The result in `.generated/<app>/` is ready to build + sign.
+project at the pinned version → `npm install` → `cap add` → apply native
+permissions (from `brand.extra.capabilities`) → `@capacitor/assets` (icon/splash
+from `icon.png`) → `cap sync`. The result in `.generated/<app>/` is ready to
+build + sign.
 
-> The generated `index.html` is the oister umbrella shell: the app's `menu.json`
-> becomes the side-menu nav, `brand.json` the title + theme colour + the iframe's
-> `appUrl`, and `seo.json` the page metadata. It overwrites any `index.html` the
-> base dist ships — the shell is the entry point.
+> The generated `index.html` is the oister umbrella shell. Its home screen is a
+> `<cobd-apps-grid>` launcher fed by the app's `apps.json` (copied into the
+> webDir); `menu.json` is the side-drawer nav, `brand.json` the title + theme
+> colour, `seo.json` the page metadata. Tapping a launcher tile navigates the
+> WebView to that app (Capacitor's `allowNavigation` keeps in-domain apps inside
+> and sends off-domain ones to the system browser). The grid element loads from
+> `generator.config.json > appsGridJs` (the `@cobdfamily/cobd-apps-grid` bundle);
+> until that URL is set the grid `<script>` is omitted.
 
 > The `cap add` / asset / sync steps need the native toolchains (Android SDK,
 > Xcode, CocoaPods). `--dry-run` and the `npm test` logic run anywhere.
+
+## Offline + serving the shell
+
+Each app's webDir gets an offline **service worker** (`sw.js` +
+`sw-register.js` + `offline.html`, from `@cobdfamily/oister`): it
+precaches the shell (`index.html` + the JSON) and runtime-caches the
+CLF CDN assets and visited pages, so the launcher works offline. In a
+Capacitor WebView the SW needs **app-bound domains** turned on — which
+the generator derives from a single source, the app's
+`brand.json > extra.domains` (e.g. `["bowencommunity.ca"]`). Everything
+else is a subdomain of those: from `extra.domains` the generator writes
+`WKAppBoundDomains` (Info.plist), sets `limitsNavigationsToAppBoundDomains`
+and `server.allowNavigation` (`["bowencommunity.ca", "*.bowencommunity.ca"]`,
+covering `apps.`/`forum.`/… subdomains) in `capacitor.config.ts`. So
+in-domain navigations stay in the WebView (off-domain → system browser),
+SWs are enabled, and you set the domain in one place. (Subresources from
+other origins like the clf CDN still load — only navigations are gated.)
+
+The generator also emits a **per-app static-web-server image context**
+(`Dockerfile` + `sws.toml` beside `www/`), mirroring clf-factory's
+`clf-cdn` image (same `joseluisq/static-web-server` base). Build it
+from the app's output dir to serve the shell remotely (one image per
+app, routed by hostname through the barbet gateway):
+
+```sh
+docker build -t cobdfamily/oister-<appId-with-dashes> .generated/<app>/
+```
+
+Bundled (the `webDir`) or remote (point Capacitor `server.url` at that
+image) — your call; the same webDir feeds both. Remote is updatable
+without an App Store re-release, but goes blank offline without the
+service worker (hence the SW) and reads more wrapper-ish for review.
 
 ## Keeping the CDN manifest current
 
@@ -73,8 +111,9 @@ paths, fetches each asset to compute its `sha384` integrity, and rewrites
 
 ## Adding / changing an app
 
-- New app → add `apps/<id>/` with `brand.json`, `menu.json`, `seo.json`, `icon.png`.
-- Different menu → edit that app's `menu.json`.
+- New app → add `apps/<id>/` with `brand.json`, `menu.json`, `apps.json`, `seo.json`, `icon.png`.
+- Different launcher tiles → edit that app's `apps.json` (the home-screen grid).
+- Different side-drawer nav → edit that app's `menu.json`.
 - Different page metadata → edit that app's `seo.json`.
 - Which web UI the shell loads → set `extra.appUrl` in that app's `brand.json`.
 - Different icon → replace that app's `icon.png`.

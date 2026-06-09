@@ -32,6 +32,13 @@ export interface CdnManifest {
     ioniconsEsm: CdnAsset;
     fontScalePaintJs: CdnAsset;
     componentsJs: CdnAsset;
+    /**
+     * The @cobdfamily/cobd-apps-grid bundle that registers
+     * <cobd-apps-grid>. Optional: when absent, the grid `<script>` is
+     * omitted (so the launcher page won't populate until it's set).
+     * Not a clf-core asset, so it's NOT managed by `sync-cdn`.
+     */
+    appsGridJs?: CdnAsset;
 }
 
 /** A single resolved nav link (label + destination href). */
@@ -91,13 +98,13 @@ export interface OisterConfig {
          */
         items: NavLink[];
     };
-    app: {
+    apps: {
         /**
-         * URL the shell's `<iframe name="app">` loads -- the web UI
-         * this native shell wraps. Empty string renders the iframe
-         * with no src (blank app pane).
+         * URL the `<cobd-apps-grid>` fetches its launcher tiles from
+         * (the apps JSON). Root-relative (e.g. "apps.json", served in
+         * the app's webDir) or an absolute URL.
          */
-        url: string;
+        path: string;
     };
     cdn: CdnManifest;
 }
@@ -110,12 +117,10 @@ export interface Brand {
     appId: string;
     /** Display name -> the shell's site title. */
     appName: string;
-    /** Pass-through extras; `themeColor` / `themeColorDark` / `appUrl` are read. */
+    /** Pass-through extras; `themeColor` / `themeColorDark` are read. */
     extra?: {
         themeColor?: string;
         themeColorDark?: string;
-        /** URL the shell's iframe loads -> OisterConfig.app.url. */
-        appUrl?: string;
         [key: string]: unknown;
     };
 }
@@ -169,11 +174,16 @@ export interface Seo {
     };
 }
 
-/** The four per-app inputs `renderApp` maps to an OisterConfig. */
+/** The per-app inputs `renderApp` maps to an OisterConfig. */
 export interface AppInput {
     brand: Brand;
     menu: Menu;
     seo: Seo;
     /** The clf-core CDN/SRI manifest (URLs + integrity per release). */
     cdn: CdnManifest;
+    /**
+     * URL the apps grid fetches its tiles from; default "apps.json"
+     * (the per-app apps.json the generator copies into the webDir).
+     */
+    appsPath?: string;
 }

@@ -19,12 +19,13 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { renderApp } from "@cobdfamily/oister";
+import { loadAsset, renderApp, STATIC_ASSETS } from "@cobdfamily/oister";
 
 import {
-  addKnownRegions, collectPermissions, planSteps, readJson,
-  renderCapacitorConfig, renderProjectPackageJson, validateBrand,
-  validateConfig, validateMenu, validateSeo,
+  addKnownRegions, appDomains, collectPermissions, planSteps, readJson,
+  renderCapacitorConfig, renderProjectPackageJson, renderSwsConfig,
+  renderSwsDockerfile, validateApps, validateBrand, validateConfig,
+  validateMenu, validateSeo,
 } from "../src/lib.mjs";
 
 const PKG_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -50,6 +51,7 @@ function loadApp(config, app) {
   const brand = validateBrand(readJson(join(dir, "brand.json")), app);
   const menu = validateMenu(readJson(join(dir, "menu.json")), app); // throws if bad
   const seo = validateSeo(readJson(join(dir, "seo.json")), app);
+  validateApps(readJson(join(dir, "apps.json")), app); // launcher tiles; throws if bad
   if (!existsSync(join(dir, "icon.png"))) {
     log(`WARNING: apps/${app}/icon.png missing — @capacitor/assets will fail until you add a ≥1024px icon`);
   }
@@ -69,12 +71,17 @@ function generate(config, app, { platforms, dryRun }) {
       "no cdnManifest configured. Set generator.config.json > cdnManifest to the clf CDN manifest (run `npm run sync-cdn` to generate shared/cdn.json).",
     );
   }
+  // clf-core CDN manifest (sync-cdn output) + the cobd-apps-grid bundle
+  // URL (not a clf asset, so it lives in generator.config.json, not
+  // shared/cdn.json which sync-cdn overwrites). An empty appsGridJs.url
+  // means the grid <script> is omitted until you publish + set it.
   const cdn = readJson(join(PKG_DIR, config.cdnManifest));
+  if (config.appsGridJs?.url) cdn.appsGridJs = config.appsGridJs;
+
   // The shared web base is optional: the oister shell is now self-
-  // contained (it loads the CLF runtime from the CDN and the app
-  // itself in an iframe), so an app needs no separate built web
-  // base. When base IS configured, its dist is laid down first and
-  // the generated index.html overwrites any the base shipped.
+  // contained (it loads the CLF runtime from the CDN; the launcher
+  // grid is its home). When base IS configured, its dist is laid down
+  // first and the generated index.html overwrites any the base shipped.
   const hasBase = Boolean(config.base?.buildCommand && config.base?.distDir);
 
   const out = join(PKG_DIR, config.outDir, app);
@@ -90,11 +97,23 @@ function generate(config, app, { platforms, dryRun }) {
     log("no shared web base configured — emitting the oister shell only (index.html + brand/menu)");
   }
   cpSync(join(dir, "menu.json"), join(www, "menu.json"));
+  cpSync(join(dir, "apps.json"), join(www, "apps.json")); // launcher tiles for <cobd-apps-grid>
   writeFileSync(join(www, "brand.json"), JSON.stringify(brand) + "\n");
   // Render the oister umbrella-shell index.html from this app's
-  // brand + menu + seo + the shared CDN manifest. Overwrites any
-  // index.html the base dist shipped: the shell is the entry point.
+  // brand + menu + seo + the CDN manifest. The grid fetches its tiles
+  // from the copied apps.json (renderApp's default apps.path). Overwrites
+  // any index.html the base dist shipped: the shell is the entry point.
   writeFileSync(join(www, "index.html"), renderApp({ brand, menu, seo, cdn }));
+  // Offline support: the service worker, its registration script, and
+  // the offline fallback page, served from the webDir root.
+  for (const name of STATIC_ASSETS) writeFileSync(join(www, name), loadAsset(name));
+
+  // Per-app static-web-server image context (one image per app): the
+  // Dockerfile + sws.toml sit beside www/ so the build context is `out`.
+  //   docker build -t cobdfamily/oister-<appId-with-dashes> <out>
+  writeFileSync(join(out, "Dockerfile"), renderSwsDockerfile(brand));
+  writeFileSync(join(out, "sws.toml"), renderSwsConfig());
+  log(`emitted per-app sws image context -> ${out} (docker build -t cobdfamily/oister-${brand.appId.replace(/\./g, "-")} ${out})`);
 
   // 4. scaffold ephemeral project
   writeFileSync(join(out, "package.json"), renderProjectPackageJson(brand, config));
@@ -104,10 +123,31 @@ function generate(config, app, { platforms, dryRun }) {
   sh("npm", ["install"], out);
   for (const p of platforms) sh("npx", ["cap", "add", p], out);
   applyPermissions(brand, out, platforms);
+  applyAppBoundDomains(brand, out, platforms);
   sh("npx", ["capacitor-assets", "generate", "--assetPath", join(dir, "icon.png")], out);
   sh("npx", ["cap", "sync"], out);
 
   log(`done: ${out} is ready to build + sign (see templates/)`);
+}
+
+// Write WKAppBoundDomains into the iOS Info.plist from the app's
+// allowed base domains. App-bound domains (+ the capacitor.config
+// limitsNavigationsToAppBoundDomains that renderCapacitorConfig sets)
+// is what enables service workers in WKWebView and confines the
+// WebView to these domains + their subdomains. Subresources from other
+// origins (e.g. the clf CDN) still load — only navigations are gated.
+function applyAppBoundDomains(brand, out, platforms) {
+  const domains = appDomains(brand);
+  if (!platforms.includes("ios") || domains.length === 0) return;
+  const plist = join(out, "ios", "App", "App", "Info.plist");
+  // Rebuild the array idempotently: drop any existing, recreate, fill.
+  try { sh("/usr/libexec/PlistBuddy", ["-c", "Delete :WKAppBoundDomains", plist]); }
+  catch { /* not present yet */ }
+  sh("/usr/libexec/PlistBuddy", ["-c", "Add :WKAppBoundDomains array", plist]);
+  domains.forEach((d, i) => {
+    sh("/usr/libexec/PlistBuddy", ["-c", `Add :WKAppBoundDomains:${i} string ${d}`, plist]);
+  });
+  log(`set WKAppBoundDomains = [${domains.join(", ")}]`);
 }
 
 const PERM_LOCALES_FALLBACK = ["en"];

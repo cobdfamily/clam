@@ -114,7 +114,7 @@ export function appToConfig(input: AppInput): OisterConfig {
         nav: {
             items: items.map((i) => ({ label: i.label, href: i.target })),
         },
-        app: { url: brand.extra?.appUrl ?? "" },
+        apps: { path: input.appsPath ?? "apps.json" },
         cdn,
     };
 }
@@ -133,6 +133,20 @@ function createHandlebars(): typeof Handlebars {
     hb.registerHelper("json", (value: unknown) =>
         new hb.SafeString(JSON.stringify(value ?? null)));
     return hb;
+}
+
+/**
+ * Static (non-templated) assets shipped with the shell that the
+ * generator must copy into the app's webDir next to index.html: the
+ * offline service worker, its registration script, and the offline
+ * fallback page.
+ */
+export const STATIC_ASSETS = ["sw.js", "sw-register.js", "offline.html"];
+
+/** Read one bundled static asset (from dist/assets/, or src/ under tsx). */
+export function loadAsset(name: string): string {
+    const path = fileURLToPath(new URL(`./assets/${name}`, import.meta.url));
+    return readFileSync(path, "utf8");
 }
 
 let cachedTemplate: string | null = null;

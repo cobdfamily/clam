@@ -111,6 +111,12 @@
        origin -- the entry point's hash is the
        load-bearing verification. -->
   <script type="module" {{{cdn.componentsJs.integrityAttr}}} src="{{cdn.componentsJs.url}}"></script>
+  {{#if cdn.appsGridJs.url}}
+  <!-- @cobdfamily/cobd-apps-grid registers <cobd-apps-grid>. It's a
+       separate package (not part of the clf-core components bundle
+       above), so it loads from its own URL. -->
+  <script type="module" {{{cdn.appsGridJs.integrityAttr}}} src="{{cdn.appsGridJs.url}}"></script>
+  {{/if}}
 </head>
 <body>
   <a href="#main" class="skip-link">{{i18n.skipToMain}}</a>
@@ -156,20 +162,26 @@
          shell via <cobd-nav> local mode (single list, no slug
          lookup) -- one entry per menu.json item.
 
-         The iframe app window is the shell's other child; it
-         is relocated into the split-pane's main pane once, on
-         upgrade (so the <iframe> is never moved/reloaded by a
-         later re-render). -->
+         The shell's main pane is the <cobd-apps-grid> launcher
+         (the home screen). Tapping a tile navigates the WebView to
+         that app (top-level; Capacitor's allowNavigation keeps
+         in-domain apps in the WebView and sends off-domain ones to
+         the system browser). `remember` records where you were per
+         app so a return visit can resume. The tiles come from the
+         apps JSON at apps.path. -->
     <cobd-app-shell site-title="{{site.title}}">
       <ul slot="menu">
         {{#each nav.items}}
         <li><a href="{{this.href}}">{{this.label}}</a></li>
         {{/each}}
       </ul>
-      <div id="iframe">
-        <iframe name="app"{{#if app.url}} src="{{app.url}}"{{/if}}></iframe>
-      </div>
+      <cobd-apps-grid path="{{apps.path}}" remember></cobd-apps-grid>
     </cobd-app-shell>
   </ion-app>
+
+  <!-- Registers sw.js for offline support. External (not inline) to
+       stay CSP-safe; both files are written into the webDir next to
+       this page by the generator. -->
+  <script src="sw-register.js"></script>
 </body>
 </html>
