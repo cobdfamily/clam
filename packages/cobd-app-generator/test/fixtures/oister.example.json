@@ -1,0 +1,76 @@
+{
+  "$comment": "Example of the fully-resolved OisterConfig that renderOisterShell consumes. In practice you call renderApp({ brand, menu, seo, cdn }) and let it build this from the per-app files; this file just documents the resolved shape. integrityAttr is the raw SRI/crossorigin attribute string (or \"\" when unhashed).",
+  "site": {
+    "lang": "en",
+    "title": "COBD",
+    "author": "Community of Bowen Drive",
+    "themeColor": "#31d53d",
+    "themeColorDark": "#1f2933"
+  },
+  "page": {
+    "titleHead": "COBD",
+    "url": "https://cobd.ca/",
+    "description": "The Community of Bowen Drive app.",
+    "ogType": "website",
+    "image": "https://cdn.blindhub.ca/clf-assets/og/cobd.png"
+  },
+  "social": {
+    "twitterHandle": "@cobd"
+  },
+  "org": {
+    "url": "https://cobd.ca/",
+    "logoUrl": "https://cdn.blindhub.ca/clf-assets/logo/cobd.svg"
+  },
+  "i18n": {
+    "skipToMain": "Skip to main content",
+    "skipToSearch": "Skip to search"
+  },
+  "nav": {
+    "items": [
+      { "label": "Home", "href": "/welcome" },
+      { "label": "Map", "href": "/map" },
+      { "label": "About", "href": "/about" }
+    ]
+  },
+  "apps": {
+    "path": "apps.json"
+  },
+  "cdn": {
+    "tokensCss": {
+      "url": "https://cdn.blindhub.ca/clf-assets/tokens.css",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    },
+    "printCss": {
+      "url": "https://cdn.blindhub.ca/clf-assets/print.css",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    },
+    "chromeCss": {
+      "url": "https://cdn.blindhub.ca/clf-assets/chrome.css",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    },
+    "ionicCss": {
+      "url": "https://cdn.blindhub.ca/ionic/8/ionic.bundle.css",
+      "integrityAttr": ""
+    },
+    "ionicEsm": {
+      "url": "https://cdn.blindhub.ca/ionic/8/ionic.esm.js",
+      "integrityAttr": ""
+    },
+    "ioniconsEsm": {
+      "url": "https://cdn.blindhub.ca/ionicons/8/ionicons.esm.js",
+      "integrityAttr": ""
+    },
+    "fontScalePaintJs": {
+      "url": "https://cdn.blindhub.ca/clf-assets/font-scale-paint.js",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    },
+    "componentsJs": {
+      "url": "https://cdn.blindhub.ca/clf-core/components/index.js",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    },
+    "appsGridJs": {
+      "url": "https://cdn.blindhub.ca/cobd-apps-grid/index.js",
+      "integrityAttr": "integrity=\"sha384-EXAMPLE\" crossorigin=\"anonymous\""
+    }
+  }
+}
