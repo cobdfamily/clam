@@ -21,6 +21,12 @@ concurrency:
   group: build-apps-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # CocoaPods (pod install via cap sync) needs a UTF-8 locale; launchd-spawned
+  # Mac runners default to ASCII-8BIT and pod install crashes without this.
+  LANG: en_US.UTF-8
+  LC_ALL: en_US.UTF-8
+
 jobs:
   # ---------------------------------------------------------------- Android
   android:
