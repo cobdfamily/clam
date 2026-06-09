@@ -1,8 +1,16 @@
 {
   "name": "@cobdfamily/cobdcorekit",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "COBDCoreKit: the single client API that runs in the page (the top-level Capacitor WebView) and calls the Capacitor plugins directly — torch, geolocation (navigator shim), in-app browser, nav, pdf — plus the capability→native-permission map. No iframe, no host bridge. Replaces the former cobdcorekit + cobdhostkit split.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cobdfamily/clam.git",
+    "directory": "packages/cobdcorekit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -20,8 +28,10 @@
   ],
   "license": "AGPL-3.0",
   "scripts": {
+    "clean": "rm -rf dist",
     "build": "tsc",
-    "test": "node --test --import tsx test/*.test.ts"
+    "test": "node --test --import tsx test/*.test.ts",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
   },
   "dependencies": {
     "@capacitor/browser": "^8.0.3",

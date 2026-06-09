@@ -1,0 +1,67 @@
+name: Publish to npm
+
+# Publishes @cobdfamily/cobdcorekit and @cobdfamily/clam-app-generator on every
+# push to main. www and springboard are intentionally not published.
+#
+# The patch version is rewritten to a shared timestamp so consumers pinned to
+# `latest` pick up changes without manual bumps (same scheme as clf-core).
+#
+# Auth is npm Trusted Publishing via GitHub OIDC -- there is no NPM_TOKEN.
+# Each package's trusted-publisher config on npmjs.com must point at this repo
+# (cobdfamily/clam) + this workflow filename (publish.yml). Provenance is
+# generated automatically under trusted publishing, so no --provenance flag.
+#
+# Order matters: cobdcorekit publishes BEFORE clam-app-generator, which depends
+# on it (^0.1.0), so a consumer installing the generator resolves a published
+# cobdcorekit.
+
+on:
+  push:
+    branches: [main]
+
+# Opt JS actions into Node.js 24 (Node 20 actions are deprecated).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1 and a Node runtime whose bundled
+      # npm supports the current OIDC handshake. Node 24 ships npm 11 natively.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
+      - name: Install workspace
+        run: npm ci --include-workspace-root --workspaces
+
+      # One shared timestamp patch for both packages, preserving each one's
+      # major.minor. prepublishOnly on each package builds/tests it at publish.
+      - name: Bump versions (timestamp-based)
+        run: |
+          set -eu
+          PATCH=$(date +%Y%m%d%H%M)
+          for PKG in packages/cobdcorekit packages/clam-app-generator; do
+            CURRENT=$(node -p "require('./${PKG}/package.json').version")
+            MAJOR=$(echo "$CURRENT" | cut -d. -f1)
+            MINOR=$(echo "$CURRENT" | cut -d. -f2)
+            npm version "$MAJOR.$MINOR.$PATCH" \
+              --no-git-tag-version \
+              --workspace="$PKG"
+          done
+
+      - name: Publish cobdcorekit
+        run: npm publish --access public --workspace=packages/cobdcorekit
+
+      - name: Publish clam-app-generator
+        run: npm publish --access public --workspace=packages/clam-app-generator
