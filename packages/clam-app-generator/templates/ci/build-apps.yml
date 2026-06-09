@@ -1,31 +1,69 @@
-# TEMPLATE — copy to <repo>/.github/workflows/ when ready (kept here so it
-# doesn't trigger heavy native builds before signing secrets exist).
+# TEMPLATE — copy to <app-repo>/.github/workflows/build-apps.yml.
 #
-# Regenerates each app from scratch (approach D) and builds both platforms.
-# Android on Linux; iOS on the self-hosted M1 runner (infra/macos).
-
+# Builds THIS app repo from its own springboard (packages/springboard),
+# regenerated fresh each run (approach D) via the published
+# @cobdfamily/clam-app-generator CLI — no clam checkout needed.
+#   Android -> GitHub-hosted ubuntu-latest (debug APK; signed release gated on secrets)
+#   iOS     -> this repo's self-hosted Apple-silicon Mac runner, signed on-box
+#             (cert + ASC key live on the Mac; nothing sensitive in GitHub Secrets)
+#
+# Per repo: set the iOS `runs-on` label (__APP_LABEL__) to this repo's runner
+# label (the app short-name, e.g. cobd / blindhub / bowencommunity).
+#
+# Dispatch-triggered (and on app-v* tags) so it never fires unattended.
 name: build-apps
+
 on:
   workflow_dispatch:
   push:
     tags: ["app-v*"]
 
+concurrency:
+  group: build-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CocoaPods (if a Cap<8 project) needs UTF-8; launchd-spawned Mac runners
+  # default to ASCII-8BIT. Harmless on Cap 8 (SPM, no pods).
+  LANG: en_US.UTF-8
+  LC_ALL: en_US.UTF-8
+  # Make the generated project's npm install resilient to registry flakes.
+  NPM_CONFIG_FETCH_RETRIES: "5"
+  NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: "20000"
+  # The generator (published CLI) reads this repo's springboard and writes a
+  # disposable Capacitor project under packages/springboard/.generated/app/.
+  GEN: "npx --yes @cobdfamily/clam-app-generator@latest"
+
 jobs:
+  # ---------------------------------------------------------------- Android
   android:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [cobd, blindhub, bowencommunity]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install
-      - name: Regenerate ${{ matrix.app }}
-        working-directory: common/clam/packages/clam-app-generator
-        run: node bin/gen.mjs ${{ matrix.app }} --platforms android
-      - name: Build signed bundle
-        working-directory: common/clam/packages/clam-app-generator/.generated/${{ matrix.app }}/android
+        with: { node-version: "22" }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "21" }   # Capacitor 8 -> JDK 21
+      - uses: android-actions/setup-android@v3
+
+      - name: Regenerate (android)
+        run: $GEN --root packages/springboard --name app --platforms android
+
+      - name: Assemble debug APK
+        working-directory: packages/springboard/.generated/app/android
+        run: ./gradlew assembleDebug --no-daemon --console=plain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-debug-apk
+          path: packages/springboard/.generated/app/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      # --- SCAFFOLD: signed release bundle (runs only once the keystore
+      # secrets exist; harmless no-op until then) ---
+      - name: Assemble signed release bundle
+        if: ${{ env.ANDROID_KEYSTORE_B64 != '' }}
+        working-directory: packages/springboard/.generated/app/android
         env:
           ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -33,29 +71,108 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           echo "$ANDROID_KEYSTORE_B64" | base64 -d > /tmp/ks.jks
-          ./gradlew bundleRelease \
+          ./gradlew bundleRelease --no-daemon --console=plain \
             -Pandroid.injected.signing.store.file=/tmp/ks.jks \
             -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
             -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
 
+  # -------------------------------------------------------------------- iOS
   ios:
-    runs-on: [self-hosted, macos, m1]
-    strategy:
-      matrix:
-        app: [cobd, blindhub, bowencommunity]
+    runs-on: [self-hosted, macOS, __APP_LABEL__]
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install
-      - name: Regenerate ${{ matrix.app }}
-        working-directory: common/clam/packages/clam-app-generator
-        run: node bin/gen.mjs ${{ matrix.app }} --platforms ios
-      - name: Build + sign (fastlane match)
-        working-directory: common/clam/packages/clam-app-generator
-        env:
-          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: fastlane ios release app:${{ matrix.app }}
+      - name: Xcode version
+        run: xcodebuild -version
+
+      # The launchd runner's PATH is system dirs only, so export Homebrew
+      # (node/npm) before invoking npx + the generator's npm/cap steps.
+      - name: Regenerate (ios)
+        run: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          $GEN --root packages/springboard --name app --platforms ios
+
+      # Archive + export in ONE shell step so the login keychain stays unlocked
+      # across archive and -exportArchive. Signing is automatic via the ASC API
+      # key (-allowProvisioningUpdates) — the only mechanism reachable from a
+      # launchd-spawned runner.
+      - name: Archive + export (signed)
+        run: |
+          set -euo pipefail
+          source ~/.config/cobd-deploy/secrets.env
+          echo "::add-mask::${MAC_KEYCHAIN_PASSWORD}"
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+          BUILD_NUMBER="$(date -u +%Y%m%d%H%M%S)"
+          BUILD_DIR="${RUNNER_TEMP}/clam-app"
+          rm -rf "$BUILD_DIR"; mkdir -p "$BUILD_DIR"
+
+          security unlock-keychain -p "$MAC_KEYCHAIN_PASSWORD" ~/Library/Keychains/login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$MAC_KEYCHAIN_PASSWORD" ~/Library/Keychains/login.keychain-db >/dev/null
+
+          # Capacitor 8 iOS uses SPM (no .xcworkspace); older CocoaPods
+          # projects have one. Build whichever exists.
+          IOSAPP="packages/springboard/.generated/app/ios/App"
+          if [ -d "$IOSAPP/App.xcworkspace" ]; then
+            SLN=(-workspace "$IOSAPP/App.xcworkspace")
+          else
+            SLN=(-project "$IOSAPP/App.xcodeproj")
+          fi
+
+          xcodebuild archive \
+            "${SLN[@]}" -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$BUILD_DIR/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+
+          cat > "$BUILD_DIR/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store</string>
+            <key>teamID</key><string>${DEVELOPMENT_TEAM}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>destination</key><string>export</string>
+          </dict></plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$BUILD_DIR/App.xcarchive" \
+            -exportOptionsPlist "$BUILD_DIR/ExportOptions.plist" \
+            -exportPath "$BUILD_DIR/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+          ls -la "$BUILD_DIR/export"
+          mkdir -p "$GITHUB_WORKSPACE/ipa-out"
+          cp "$BUILD_DIR"/export/*.ipa "$GITHUB_WORKSPACE/ipa-out/${{ github.event.repository.name }}.ipa"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}-ipa
+          path: ipa-out/*.ipa
+          if-no-files-found: error
+
+      # --- SCAFFOLD: TestFlight upload. Requires an App Store Connect *app
+      # record* for the bundle id (the one thing -allowProvisioningUpdates
+      # can't auto-create). Enable by setting repo variable UPLOAD_TESTFLIGHT=1
+      # once the app record exists. ---
+      - name: Upload to TestFlight
+        if: ${{ vars.UPLOAD_TESTFLIGHT == '1' }}
+        run: |
+          set -euo pipefail
+          source ~/.config/cobd-deploy/secrets.env
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          xcrun altool --upload-app -t ios \
+            -f "$GITHUB_WORKSPACE/ipa-out/${{ github.event.repository.name }}.ipa" \
+            --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
