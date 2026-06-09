@@ -90,10 +90,13 @@ app, routed by hostname through the barbet gateway):
 docker build -t cobdfamily/oister-<appId-with-dashes> .generated/<app>/
 ```
 
-Bundled (the `webDir`) or remote (point Capacitor `server.url` at that
-image) — your call; the same webDir feeds both. Remote is updatable
-without an App Store re-release, but goes blank offline without the
-service worker (hence the SW) and reads more wrapper-ish for review.
+When `extra.domains` is set, the app loads **remotely** by default:
+`renderCapacitorConfig` points Capacitor `server.url` at
+`https://apps.<primary domain>` (the per-app sws image), so updating an
+app is a redeploy — no App Store re-release. The same `webDir` is still
+emitted (it's the sws image's content and an offline fallback), and the
+service worker keeps it working offline. Drop `server.url` if you'd
+rather ship the bundled `webDir` instead.
 
 ## Keeping the CDN manifest current
 

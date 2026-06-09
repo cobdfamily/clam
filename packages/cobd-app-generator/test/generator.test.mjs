@@ -4,10 +4,11 @@ import assert from "node:assert/strict";
 import { renderApp } from "@cobdfamily/oister";
 
 import {
-  addKnownRegions, allowNavigation, appDomains, cdnUrlsFromManifest,
-  collectPermissions, planSteps, renderCapacitorConfig,
-  renderProjectPackageJson, renderSwsConfig, renderSwsDockerfile,
-  validateApps, validateBrand, validateConfig, validateMenu, validateSeo,
+  addKnownRegions, allowNavigation, appDomains, appsOrigin,
+  cdnUrlsFromManifest, collectPermissions, planSteps,
+  renderCapacitorConfig, renderProjectPackageJson, renderSwsConfig,
+  renderSwsDockerfile, validateApps, validateBrand, validateConfig,
+  validateMenu, validateSeo,
 } from "../src/lib.mjs";
 
 test("validateBrand accepts a reverse-DNS appId and requires appName", () => {
@@ -133,16 +134,23 @@ test("appDomains + allowNavigation read brand.extra and build nav patterns", () 
     ["bowencommunity.ca", "*.bowencommunity.ca"]);
 });
 
-test("renderCapacitorConfig derives allowNavigation + app-bound domains from extra.domains", () => {
+test("appsOrigin is apps.<primary domain>", () => {
+  assert.equal(appsOrigin(["bowencommunity.ca"]), "https://apps.bowencommunity.ca");
+  assert.equal(appsOrigin(["cobd.ca", "blindhub.ca"]), "https://apps.cobd.ca"); // first wins
+  assert.equal(appsOrigin([]), "");
+});
+
+test("renderCapacitorConfig derives server.url + allowNavigation + app-bound from extra.domains", () => {
   const brand = validateBrand(
     { appId: "ca.cobd.app.alpha", appName: "Alpha", extra: { domains: ["bowencommunity.ca"] } },
     "alpha");
   const cfg = renderCapacitorConfig(brand);
+  assert.match(cfg, /url: "https:\/\/apps\.bowencommunity\.ca"/);
   assert.match(cfg, /allowNavigation: \["bowencommunity\.ca","\*\.bowencommunity\.ca"\]/);
   assert.match(cfg, /limitsNavigationsToAppBoundDomains: true/);
-  // No domains -> neither block (minimal config).
+  // No domains -> no server/ios blocks (minimal config).
   const bare = renderCapacitorConfig(validateBrand({ appId: "ca.cobd.x", appName: "X" }, "x"));
-  assert.doesNotMatch(bare, /allowNavigation/);
+  assert.doesNotMatch(bare, /server:/);
   assert.doesNotMatch(bare, /limitsNavigationsToAppBoundDomains/);
 });
 

@@ -267,14 +267,30 @@ export function allowNavigation(domains) {
   return domains.flatMap((d) => [d, `*.${d}`]);
 }
 
+/**
+ * The origin the app's shell is served from: `apps.<primary domain>`
+ * (the first of brand.extra.domains). This is the Capacitor
+ * `server.url` — the WebView loads the shell remotely from here (the
+ * per-app sws image), and it's a subdomain of the allowed domain so
+ * app-bound domains + allowNavigation cover it. Empty when no domains.
+ */
+export function appsOrigin(domains) {
+  return domains.length ? `https://apps.${domains[0]}` : "";
+}
+
 export function renderCapacitorConfig(brand) {
   const domains = appDomains(brand);
   const nav = allowNavigation(domains);
-  // Derived from the app's allowed domains: route in-domain navigations
-  // inside the WebView (off-domain → system browser), and limit the
-  // WebView to app-bound domains (which also enables service workers).
-  const serverBlock = nav.length
-    ? `  server: {\n    allowNavigation: ${JSON.stringify(nav)},\n  },\n`
+  const url = appsOrigin(domains);
+  // Derived from the app's allowed domains: load the shell remotely
+  // from apps.<domain>, route in-domain navigations inside the WebView
+  // (off-domain → system browser), and limit the WebView to app-bound
+  // domains (which also enables service workers).
+  const serverLines = [];
+  if (url) serverLines.push(`    url: ${JSON.stringify(url)},`);
+  if (nav.length) serverLines.push(`    allowNavigation: ${JSON.stringify(nav)},`);
+  const serverBlock = serverLines.length
+    ? `  server: {\n${serverLines.join("\n")}\n  },\n`
     : "";
   const iosBlock = domains.length
     ? `  ios: {\n    limitsNavigationsToAppBoundDomains: true,\n  },\n`
