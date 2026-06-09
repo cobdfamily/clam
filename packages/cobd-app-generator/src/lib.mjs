@@ -120,6 +120,31 @@ export function collectPermissions(capabilities) {
   return { ios, android: [...android] };
 }
 
+/**
+ * Add locales to an Xcode project's `knownRegions` list so iOS loads
+ * the matching `<locale>.lproj/InfoPlist.strings` (it ignores .lproj
+ * dirs for regions not registered here). Pure string transform on the
+ * project.pbxproj contents; idempotent (won't duplicate existing
+ * regions). Returns the text unchanged if no knownRegions block exists.
+ */
+export function addKnownRegions(pbxproj, locales) {
+  return pbxproj.replace(/knownRegions = \(([\s\S]*?)\);/, (full, inner) => {
+    const existing = inner
+      .split(",")
+      .map((s) => s.trim().replace(/^"|"$/g, ""))
+      .filter(Boolean);
+    const want = (locales ?? []).filter((l) => l && !existing.includes(l));
+    if (want.length === 0) return full;
+    const merged = [...existing, ...want];
+    const indent = "\t\t\t\t";
+    // Quote anything that isn't a bare alphanumeric region code (e.g. "en-GB").
+    const body = merged
+      .map((r) => indent + (/^[A-Za-z0-9]+$/.test(r) ? r : `"${r}"`))
+      .join(",\n");
+    return `knownRegions = (\n${body},\n\t\t\t);`;
+  });
+}
+
 export function cdnUrlsFromManifest(manifest, base) {
   const root = String(base ?? "").replace(/\/$/, "");
   if (!root) throw new Error("cdnUrlsFromManifest: base url required");
@@ -149,7 +174,7 @@ export function planSteps({ config, app, brand }) {
     { id: "scaffold", desc: `write package.json (Capacitor pinned ${ver}) + capacitor.config.ts (appId=${brand.appId}, appName=${brand.appName})` },
     { id: "install", desc: `npm install in the ephemeral project` },
     { id: "cap-add", desc: `npx cap add ${platforms}` },
-    { id: "overlay-native", desc: `apply native permissions from extra.capabilities (iOS Info.plist + localized InfoPlist.strings, Android <uses-permission>)` },
+    { id: "overlay-native", desc: `apply native permissions from extra.capabilities (iOS Info.plist + localized InfoPlist.strings + pbxproj knownRegions, Android <uses-permission>)` },
     { id: "assets", desc: `npx capacitor-assets generate (from apps/${app}/icon.png)` },
     { id: "cap-sync", desc: `npx cap sync` },
     { id: "build-sign", desc: `build + sign (CI): gradle (Android) / fastlane match + xcodebuild (iOS)` },

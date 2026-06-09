@@ -4,9 +4,9 @@ import assert from "node:assert/strict";
 import { renderApp } from "@cobdfamily/oister";
 
 import {
-  cdnUrlsFromManifest, collectPermissions, planSteps, renderCapacitorConfig,
-  renderProjectPackageJson, validateBrand, validateConfig, validateMenu,
-  validateSeo,
+  addKnownRegions, cdnUrlsFromManifest, collectPermissions, planSteps,
+  renderCapacitorConfig, renderProjectPackageJson, validateBrand,
+  validateConfig, validateMenu, validateSeo,
 } from "../src/lib.mjs";
 
 test("validateBrand accepts a reverse-DNS appId and requires appName", () => {
@@ -95,6 +95,23 @@ test("collectPermissions maps capabilities to iOS keys + Android perms", () => {
 test("collectPermissions on an empty/absent list yields nothing", () => {
   assert.deepEqual(collectPermissions([]), { ios: {}, android: [] });
   assert.deepEqual(collectPermissions(undefined), { ios: {}, android: [] });
+});
+
+test("addKnownRegions adds missing locales, dedupes, and is idempotent", () => {
+  const pbx = "\t\t\tknownRegions = (\n\t\t\t\ten,\n\t\t\t\tBase,\n\t\t\t);\n";
+  const once = addKnownRegions(pbx, ["en", "fr"]);
+  assert.match(once, /knownRegions = \(/);
+  assert.match(once, /\bfr,/);          // fr added
+  assert.equal((once.match(/\ben\b/g) || []).length, 1); // en not duplicated
+  assert.match(once, /\bBase,/);        // existing preserved
+  // Idempotent: applying the same locales again changes nothing.
+  assert.equal(addKnownRegions(once, ["en", "fr"]), once);
+});
+
+test("addKnownRegions quotes non-bare region codes and no-ops without a block", () => {
+  const pbx = "knownRegions = (\n\t\t\t\ten,\n\t\t\t);";
+  assert.match(addKnownRegions(pbx, ["en-GB"]), /"en-GB"/);
+  assert.equal(addKnownRegions("no regions here", ["fr"]), "no regions here");
 });
 
 test("validateConfig defaults platforms and rejects unknown ones", () => {

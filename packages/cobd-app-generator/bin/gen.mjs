@@ -22,9 +22,9 @@ import { fileURLToPath } from "node:url";
 import { renderApp } from "@cobdfamily/oister";
 
 import {
-  collectPermissions, planSteps, readJson, renderCapacitorConfig,
-  renderProjectPackageJson, validateBrand, validateConfig, validateMenu,
-  validateSeo,
+  addKnownRegions, collectPermissions, planSteps, readJson,
+  renderCapacitorConfig, renderProjectPackageJson, validateBrand,
+  validateConfig, validateMenu, validateSeo,
 } from "../src/lib.mjs";
 
 const PKG_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -191,6 +191,13 @@ function applyPermissions(brand, out, platforms) {
     }
     log(`applied ${Object.keys(ios).length} iOS usage string(s) across ${locales.length} locale(s)`);
     if (!clf) log("  (clf-core not installed — used English fallbacks; add @cobdfamily/clf-core for localized strings)");
+    // Register the locales in the Xcode project so iOS actually loads
+    // the .lproj/InfoPlist.strings we just wrote (ignored otherwise).
+    const pbxproj = join(out, "ios", "App", "App.xcodeproj", "project.pbxproj");
+    if (locales.length > 1 && existsSync(pbxproj)) {
+      writeFileSync(pbxproj, addKnownRegions(readFileSync(pbxproj, "utf8"), locales));
+      log(`registered ${locales.length} locale(s) in project.pbxproj knownRegions`);
+    }
   }
 
   if (platforms.includes("android") && android.length) {
