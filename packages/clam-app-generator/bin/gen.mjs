@@ -109,7 +109,7 @@ function generate(config, { app, dir, outBase, platforms, dryRun }) {
     log("no shared web base configured — emitting the clam shell only (index.html + brand/menu)");
   }
   cpSync(join(dir, "menu.json"), join(www, "menu.json"));
-  // Compile the authoring tiles (label/target/image_url, + beta_target which
+  // Compile the authoring tiles (label/target/icon_url, + beta_target which
   // we drop) into the runtime shape <cobd-apps-grid> fetches (label/href/iconUrl).
   writeFileSync(join(www, "apps.json"), JSON.stringify({ apps: tilesForGrid(apps) }, null, 2) + "\n");
   writeFileSync(join(www, "brand.json"), JSON.stringify(brand) + "\n");

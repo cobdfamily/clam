@@ -124,10 +124,10 @@ test("validateApps accepts array or { apps } and requires label + target", () =>
   assert.throws(() => validateApps("nope"), /expected an array/);
 });
 
-test("tilesForGrid maps target->href + image_url->iconUrl, drops beta_target", () => {
+test("tilesForGrid maps target->href + icon_url->iconUrl, drops beta_target", () => {
   assert.deepEqual(
     tilesForGrid([
-      { label: "Ferry", target: "https://ferry/", beta_target: "https://beta/", image_url: "https://ferry/i.png" },
+      { label: "Ferry", target: "https://ferry/", beta_target: "https://beta/", icon_url: "https://ferry/i.png" },
       { label: "Bare", target: "/x" },
     ]),
     [
